@@ -1,0 +1,40 @@
+/* Apps tile: each app presses on its own, so the dock slot holding the tile doesn't shrink. */
+[data-glintbar-tile]:has(.glintbar-apps-root):active {
+  transform: none !important;
+}
+
+@keyframes glintbar-apps-flash {
+  0%,
+  100% {
+    background-color: var(--g-tile);
+    box-shadow: 0 0 0 0 transparent;
+  }
+  50% {
+    background-color: color-mix(in srgb, var(--g-accent) 32%, var(--g-tile));
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--g-accent) 55%, transparent);
+  }
+}
+/* An app asking for attention flashes a few times, then stays highlighted (an endless flash would
+   repaint the dock every frame until the user switches to it). */
+.glintbar-apps-flash {
+  background-color: color-mix(in srgb, var(--g-accent) 28%, var(--g-tile));
+  animation: glintbar-apps-flash 1.4s ease-in-out 6;
+}
+@media (prefers-reduced-motion: reduce) {
+  .glintbar-apps-flash {
+    animation: none;
+    background-color: color-mix(in srgb, var(--g-accent) 28%, var(--g-tile));
+  }
+}
+
+@keyframes glintbar-apps-shot {
+  from {
+    opacity: 0.9;
+  }
+  to {
+    opacity: 0;
+  }
+}
+.glintbar-apps-shot {
+  animation: glintbar-apps-shot 600ms ease-out forwards;
+}

@@ -1,0 +1,19 @@
+/* Idle tiles must not produce frames (a software-composited WebView repaints the whole damaged
+   area for every animation frame). Meters therefore jump to each new sample; they glide only while
+   the pointer is over their tile or inside an open card/panel, where frames are expected anyway. */
+.g-glide {
+  transition: none;
+}
+[data-glintbar-tile]:hover .g-glide,
+.g-panel .g-glide {
+  transition: var(--g-glide, none);
+}
+
+/* Decorative loops (equaliser, charging spark) hold still until their tile is hovered. */
+.g-hover-loop {
+  animation-play-state: paused !important;
+}
+[data-glintbar-tile]:hover .g-hover-loop,
+.g-panel .g-hover-loop {
+  animation-play-state: running !important;
+}

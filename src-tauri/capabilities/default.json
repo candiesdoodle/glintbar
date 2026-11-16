@@ -1,0 +1,12 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "The dock window. App commands (svc_call) are allowed by default; core:default covers events.",
+  "windows": [
+    "main",
+    "dock-*"
+  ],
+  "permissions": [
+    "core:default"
+  ]
+}

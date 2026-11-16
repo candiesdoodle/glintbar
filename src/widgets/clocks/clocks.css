@@ -1,0 +1,79 @@
+/* Clocks slice: split-flap digits. The flaps animate once per change, nothing runs while idle. */
+.glintbar-flip {
+  position: relative;
+  perspective: 300px;
+  flex-shrink: 0;
+}
+.glintbar-flip-half {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 50%;
+  overflow: hidden;
+  background: var(--glintbar-flip-bg);
+  backface-visibility: hidden;
+}
+.glintbar-flip-half > span {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 200%;
+  display: grid;
+  place-items: center;
+  line-height: 1;
+}
+.glintbar-flip-top {
+  top: 0;
+  border-radius: inherit;
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+  transform-origin: 50% 100%;
+}
+.glintbar-flip-top > span {
+  top: 0;
+}
+.glintbar-flip-bottom {
+  bottom: 0;
+  border-radius: inherit;
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+  transform-origin: 50% 0%;
+}
+.glintbar-flip-bottom > span {
+  bottom: 0;
+}
+.glintbar-flip-hinge {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1px;
+  margin-top: -0.5px;
+  background: rgba(0, 0, 0, 0.35);
+  z-index: 3;
+}
+@keyframes glintbar-flip-down {
+  from {
+    transform: rotateX(0deg);
+  }
+  to {
+    transform: rotateX(-90deg);
+  }
+}
+@keyframes glintbar-flip-up {
+  from {
+    transform: rotateX(90deg);
+  }
+  to {
+    transform: rotateX(0deg);
+  }
+}
+.glintbar-flip-anim-top {
+  z-index: 2;
+  animation: glintbar-flip-down 230ms ease-in forwards;
+}
+.glintbar-flip-anim-bottom {
+  z-index: 2;
+  transform: rotateX(90deg);
+  animation: glintbar-flip-up 230ms ease-out 230ms forwards;
+}

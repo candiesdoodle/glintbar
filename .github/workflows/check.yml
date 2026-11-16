@@ -1,0 +1,104 @@
+# Type-check, unit tests, IPC cross-check, cargo check and cargo test on Windows.
+# Manual only (runner minutes cost money).
+name: Check
+
+on:
+  workflow_dispatch:
+    inputs:
+      rust_tests:
+        description: "Run cargo test (lib unit tests; builds the test binary)"
+        type: boolean
+        default: true
+
+concurrency:
+  group: check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: windows-latest
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: TypeScript
+        id: tsc
+        continue-on-error: true
+        run: npx tsc --noEmit
+
+      - name: Unit tests (vitest)
+        id: vitest
+        continue-on-error: true
+        run: npx vitest run
+
+      # Every service/method/topic the UI uses must be registered in Rust (static, no build needed).
+      - name: IPC cross-check
+        id: ipc
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          node scripts/check-ipc.mjs | tee ipc-check.log
+
+      - name: Frontend build
+        id: vite
+        continue-on-error: true
+        run: npx vite build
+
+      # generate_context! embeds ../dist, so cargo needs it even when the frontend build failed.
+      - name: Ensure dist exists
+        shell: bash
+        run: test -f dist/index.html || (mkdir -p dist && echo '<!doctype html>' > dist/index.html)
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: "src-tauri -> target"
+
+      - name: cargo check
+        id: cargo
+        continue-on-error: true
+        working-directory: src-tauri
+        shell: bash
+        run: |
+          set -o pipefail
+          cargo check --locked --message-format short 2>&1 | grep -v '^\s*Compiling\|^\s*Checking' | tee ../cargo-check.log
+
+      - name: cargo test
+        id: cargotest
+        if: ${{ inputs.rust_tests }}
+        continue-on-error: true
+        working-directory: src-tauri
+        shell: bash
+        run: |
+          set -o pipefail
+          cargo test --locked --lib --message-format short 2>&1 | grep -v '^\s*Compiling' | tee ../cargo-test.log
+
+      - name: Summary
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "| Check | Result |"
+            echo "|---|---|"
+            echo "| tsc | ${{ steps.tsc.outcome }} |"
+            echo "| vitest | ${{ steps.vitest.outcome }} |"
+            echo "| IPC cross-check | ${{ steps.ipc.outcome }} |"
+            echo "| vite build | ${{ steps.vite.outcome }} |"
+            echo "| cargo check | ${{ steps.cargo.outcome }} |"
+            echo "| cargo test | ${{ steps.cargotest.outcome || 'skipped' }} |"
+            if [ -f ipc-check.log ] && [ "${{ steps.ipc.outcome }}" = "failure" ]; then echo; echo '<details><summary>IPC cross-check</summary>'; echo; echo '```'; cat ipc-check.log; echo '```'; echo '</details>'; fi
+            if [ -f cargo-check.log ]; then echo; echo '<details><summary>cargo check output</summary>'; echo; echo '```'; tail -c 60000 cargo-check.log; echo '```'; echo '</details>'; fi
+            if [ -f cargo-test.log ]; then echo; echo '<details><summary>cargo test output (tail)</summary>'; echo; echo '```'; grep -E 'test result|FAILED|panicked|^error|^---- ' cargo-test.log | tail -c 30000; echo '```'; echo '</details>'; fi
+          } >> "$GITHUB_STEP_SUMMARY"
+          for o in "${{ steps.tsc.outcome }}" "${{ steps.vitest.outcome }}" "${{ steps.ipc.outcome }}" "${{ steps.vite.outcome }}" "${{ steps.cargo.outcome }}" "${{ steps.cargotest.outcome }}"; do
+            if [ "$o" = "failure" ]; then echo "At least one check failed"; exit 1; fi
+          done

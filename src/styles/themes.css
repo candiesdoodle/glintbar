@@ -1,0 +1,439 @@
+/*
+ * GlintBar themes: six complete token sets. Loaded after src/styles.css (imported by
+ * src/appearance/index.ts) so these rules win. Components only read --g-* variables (through the
+ * Tailwind names bg-tile, text-fg, ... or var(--g-*)), so a theme is just a block of variables.
+ *
+ * Attributes on <html> (set by src/appearance/apply.ts), also usable on any preview container:
+ *   data-theme="black|white|midnight|glass|ios-glass|clear"
+ *   data-widget-style="black|white|frosted"      Clear only: what each widget looks like
+ *   data-live-glass="on|off|fallback"            on = the WebGL glass draws under the bar
+ *   data-glass-tone="dark|light"                 what is behind clear glass (picks text colour)
+ *
+ * Token groups: bar, tiles, cards/menus, text, accent, inputs, charts, status, effects.
+ */
+
+:root,
+[data-theme] {
+  --g-radius-card: 18px;
+  --g-radius-control: 9px;
+  --g-accent-soft: color-mix(in srgb, var(--g-accent) 16%, transparent);
+  --g-accent-strong: color-mix(in srgb, var(--g-accent) 82%, var(--g-fg));
+  --g-focus: color-mix(in srgb, var(--g-accent) 70%, transparent);
+  --g-chart-1: var(--g-accent);
+  --g-chart-grid: var(--g-track);
+  --g-menu: var(--g-card);
+  --g-menu-line: var(--g-card-line);
+  --g-text-shadow: none;
+  --g-tile-shadow: none;
+  --g-tile-highlight: transparent;
+  --g-bar-highlight: transparent;
+  --g-card-highlight: transparent;
+  --g-glass-tint: var(--g-bar);
+  --g-glass-fallback: var(--g-bar);
+  --g-scrim: rgba(0, 0, 0, 0.35);
+  color: var(--g-fg);
+}
+
+/* ---- Midnight: the glass under a deep, dark tint ------------------------------------------- */
+[data-theme="midnight"] {
+  color-scheme: dark;
+  --g-bar: rgba(16, 18, 38, 0.82);
+  --g-glass-tint: rgba(14, 16, 36, 0.6);
+  --g-glass-fallback: rgba(16, 18, 38, 0.92);
+  --g-bar-line: rgba(255, 255, 255, 0.1);
+  --g-bar-blur: blur(28px) saturate(150%);
+  --g-bar-shadow: 0 10px 30px rgba(3, 4, 18, 0.45), 0 1px 3px rgba(0, 0, 0, 0.3);
+  --g-bar-highlight: rgba(255, 255, 255, 0.07);
+  --g-tile: rgba(255, 255, 255, 0.055);
+  --g-tile-hover: rgba(255, 255, 255, 0.095);
+  --g-tile-line: rgba(255, 255, 255, 0.065);
+  --g-tile-highlight: rgba(255, 255, 255, 0.05);
+  --g-card: rgba(20, 22, 44, 0.95);
+  --g-card-line: rgba(255, 255, 255, 0.1);
+  --g-card-blur: blur(30px) saturate(150%);
+  --g-card-shadow: 0 24px 60px rgba(2, 3, 16, 0.55), 0 2px 8px rgba(0, 0, 0, 0.3);
+  --g-card-highlight: rgba(255, 255, 255, 0.06);
+  --g-menu: rgba(26, 28, 52, 0.97);
+  --g-fg: #eef0ff;
+  --g-dim: rgba(232, 235, 255, 0.64);
+  --g-faint: rgba(232, 235, 255, 0.4);
+  --g-accent: #8b93ff;
+  --g-on-accent: #ffffff;
+  --g-track: rgba(255, 255, 255, 0.1);
+  --g-hover: rgba(255, 255, 255, 0.07);
+  --g-input: rgba(255, 255, 255, 0.055);
+  --g-input-line: rgba(255, 255, 255, 0.1);
+  --g-good: #3ed598;
+  --g-warn: #ffb547;
+  --g-bad: #ff6b6b;
+  --g-chart-2: #4fd1c5;
+  --g-chart-3: #f6ad55;
+  --g-chart-4: #f687b3;
+  --g-chart-5: #63b3ed;
+  --g-chart-6: #b794f4;
+}
+
+/* ---- Black: solid, OLED-deep -------------------------------------------------------------- */
+[data-theme="black"] {
+  color-scheme: dark;
+  --g-bar: rgba(9, 9, 10, 0.97);
+  --g-bar-line: rgba(255, 255, 255, 0.08);
+  --g-bar-blur: none;
+  --g-bar-shadow: 0 10px 28px rgba(0, 0, 0, 0.5), 0 1px 2px rgba(0, 0, 0, 0.4);
+  --g-bar-highlight: rgba(255, 255, 255, 0.05);
+  --g-tile: #18181a;
+  --g-tile-hover: #212124;
+  --g-tile-line: rgba(255, 255, 255, 0.05);
+  --g-tile-highlight: rgba(255, 255, 255, 0.04);
+  --g-card: #121214;
+  --g-card-line: rgba(255, 255, 255, 0.09);
+  --g-card-blur: none;
+  --g-card-shadow: 0 24px 60px rgba(0, 0, 0, 0.6), 0 2px 6px rgba(0, 0, 0, 0.4);
+  --g-card-highlight: rgba(255, 255, 255, 0.05);
+  --g-menu: #18181b;
+  --g-fg: #f5f5f7;
+  --g-dim: rgba(245, 245, 247, 0.62);
+  --g-faint: rgba(245, 245, 247, 0.38);
+  --g-accent: #0a84ff;
+  --g-on-accent: #ffffff;
+  --g-track: rgba(255, 255, 255, 0.11);
+  --g-hover: rgba(255, 255, 255, 0.07);
+  --g-input: rgba(255, 255, 255, 0.06);
+  --g-input-line: rgba(255, 255, 255, 0.1);
+  --g-good: #30d158;
+  --g-warn: #ff9f0a;
+  --g-bad: #ff453a;
+  --g-chart-2: #64d2ff;
+  --g-chart-3: #ff9f0a;
+  --g-chart-4: #ff375f;
+  --g-chart-5: #30d158;
+  --g-chart-6: #bf5af2;
+}
+
+/* ---- White: solid, paper-light -------------------------------------------------------------- */
+[data-theme="white"] {
+  color-scheme: light;
+  --g-bar: rgba(250, 250, 252, 0.97);
+  --g-bar-line: rgba(0, 0, 0, 0.09);
+  --g-bar-blur: none;
+  --g-bar-shadow: 0 10px 28px rgba(16, 18, 40, 0.16), 0 1px 3px rgba(0, 0, 0, 0.08);
+  --g-bar-highlight: rgba(255, 255, 255, 0.9);
+  --g-tile: rgba(0, 0, 0, 0.038);
+  --g-tile-hover: rgba(0, 0, 0, 0.065);
+  --g-tile-line: rgba(0, 0, 0, 0.05);
+  --g-tile-highlight: rgba(255, 255, 255, 0.7);
+  --g-card: #ffffff;
+  --g-card-line: rgba(0, 0, 0, 0.09);
+  --g-card-blur: none;
+  --g-card-shadow: 0 24px 60px rgba(16, 18, 40, 0.18), 0 2px 8px rgba(16, 18, 40, 0.08);
+  --g-card-highlight: rgba(255, 255, 255, 1);
+  --g-menu: #ffffff;
+  --g-fg: #15151a;
+  --g-dim: rgba(21, 21, 26, 0.62);
+  --g-faint: rgba(21, 21, 26, 0.4);
+  --g-accent: #007aff;
+  --g-on-accent: #ffffff;
+  --g-track: rgba(0, 0, 0, 0.085);
+  --g-hover: rgba(0, 0, 0, 0.05);
+  --g-input: rgba(0, 0, 0, 0.045);
+  --g-input-line: rgba(0, 0, 0, 0.1);
+  --g-good: #1fa855;
+  --g-warn: #d97a00;
+  --g-bad: #e0342b;
+  --g-chart-2: #0fb5ae;
+  --g-chart-3: #f5a623;
+  --g-chart-4: #e8467c;
+  --g-chart-5: #34c759;
+  --g-chart-6: #8e5cf7;
+  --g-scrim: rgba(0, 0, 0, 0.18);
+}
+
+/* ---- Glass: clear, with strong bending at the edges --------------------------------- */
+[data-theme="glass"] {
+  color-scheme: dark;
+  --g-bar: rgba(30, 32, 46, 0.4);
+  --g-glass-tint: rgba(255, 255, 255, 0.045);
+  --g-glass-fallback: rgba(34, 36, 50, 0.62);
+  --g-bar-line: rgba(255, 255, 255, 0.26);
+  --g-bar-blur: blur(22px) saturate(170%);
+  --g-bar-shadow: 0 12px 34px rgba(0, 0, 0, 0.28), 0 1px 3px rgba(0, 0, 0, 0.2);
+  --g-bar-highlight: rgba(255, 255, 255, 0.3);
+  --g-tile: rgba(14, 16, 26, 0.26);
+  --g-tile-hover: rgba(14, 16, 26, 0.34);
+  --g-tile-line: rgba(255, 255, 255, 0.18);
+  --g-tile-highlight: rgba(255, 255, 255, 0.22);
+  --g-tile-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+  --g-card: rgba(28, 30, 44, 0.9);
+  --g-card-line: rgba(255, 255, 255, 0.18);
+  --g-card-blur: blur(34px) saturate(170%);
+  --g-card-shadow: 0 26px 64px rgba(0, 0, 0, 0.42), 0 2px 8px rgba(0, 0, 0, 0.2);
+  --g-card-highlight: rgba(255, 255, 255, 0.16);
+  --g-menu: rgba(34, 36, 52, 0.94);
+  --g-fg: #ffffff;
+  --g-dim: rgba(255, 255, 255, 0.76);
+  --g-faint: rgba(255, 255, 255, 0.5);
+  --g-text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --g-accent: #64d2ff;
+  --g-on-accent: #03222e;
+  --g-track: rgba(255, 255, 255, 0.18);
+  --g-hover: rgba(255, 255, 255, 0.1);
+  --g-input: rgba(255, 255, 255, 0.09);
+  --g-input-line: rgba(255, 255, 255, 0.16);
+  --g-good: #4ce68f;
+  --g-warn: #ffc14d;
+  --g-bad: #ff7a70;
+  --g-chart-2: #b39dff;
+  --g-chart-3: #ffd166;
+  --g-chart-4: #ff8fab;
+  --g-chart-5: #7cf5c4;
+  --g-chart-6: #a0c4ff;
+}
+/* Clear glass over something bright: dark text, lighter chips. */
+[data-theme="glass"][data-glass-tone="light"],
+[data-theme="clear"][data-widget-style="frosted"][data-glass-tone="light"] {
+  --g-fg: #0b0b10;
+  --g-dim: rgba(11, 11, 16, 0.68);
+  --g-faint: rgba(11, 11, 16, 0.46);
+  --g-text-shadow: 0 0 8px rgba(255, 255, 255, 0.35);
+  --g-tile: rgba(255, 255, 255, 0.38);
+  --g-tile-hover: rgba(255, 255, 255, 0.48);
+  --g-tile-line: rgba(255, 255, 255, 0.5);
+  --g-track: rgba(0, 0, 0, 0.13);
+  --g-glass-tint: rgba(255, 255, 255, 0.1);
+}
+
+/* ---- Frosted Glass: frostier, a bright milky tint ---------------------------------------------- */
+[data-theme="ios-glass"] {
+  color-scheme: light;
+  --g-bar: rgba(244, 244, 248, 0.6);
+  --g-glass-tint: rgba(246, 246, 250, 0.42);
+  --g-glass-fallback: rgba(244, 244, 248, 0.86);
+  --g-bar-line: rgba(255, 255, 255, 0.6);
+  --g-bar-blur: blur(30px) saturate(180%);
+  --g-bar-shadow: 0 12px 32px rgba(10, 12, 30, 0.2), 0 1px 3px rgba(0, 0, 0, 0.08);
+  --g-bar-highlight: rgba(255, 255, 255, 0.75);
+  --g-tile: rgba(255, 255, 255, 0.46);
+  --g-tile-hover: rgba(255, 255, 255, 0.62);
+  --g-tile-line: rgba(255, 255, 255, 0.62);
+  --g-tile-highlight: rgba(255, 255, 255, 0.85);
+  --g-tile-shadow: 0 1px 3px rgba(20, 22, 50, 0.08);
+  --g-card: rgba(246, 246, 250, 0.95);
+  --g-card-line: rgba(255, 255, 255, 0.75);
+  --g-card-blur: blur(36px) saturate(180%);
+  --g-card-shadow: 0 26px 64px rgba(10, 12, 30, 0.24), 0 2px 8px rgba(10, 12, 30, 0.08);
+  --g-card-highlight: rgba(255, 255, 255, 0.95);
+  --g-menu: rgba(250, 250, 252, 0.97);
+  --g-fg: #101015;
+  --g-dim: rgba(16, 16, 21, 0.62);
+  --g-faint: rgba(16, 16, 21, 0.42);
+  --g-accent: #007aff;
+  --g-on-accent: #ffffff;
+  --g-track: rgba(0, 0, 0, 0.09);
+  --g-hover: rgba(0, 0, 0, 0.05);
+  --g-input: rgba(255, 255, 255, 0.6);
+  --g-input-line: rgba(0, 0, 0, 0.08);
+  --g-good: #1fa855;
+  --g-warn: #e08600;
+  --g-bad: #e5392f;
+  --g-chart-2: #30b0c7;
+  --g-chart-3: #ff9500;
+  --g-chart-4: #ff2d55;
+  --g-chart-5: #34c759;
+  --g-chart-6: #af52de;
+  --g-scrim: rgba(0, 0, 0, 0.16);
+}
+
+/* ---- Clear: no bar, only the widgets (black, white or frosted) ------------------------------ */
+[data-theme="clear"] {
+  color-scheme: dark;
+  --g-bar: transparent;
+  --g-glass-tint: transparent;
+  --g-glass-fallback: transparent;
+  --g-bar-line: transparent;
+  --g-bar-blur: none;
+  --g-bar-shadow: none;
+  --g-tile: rgba(18, 18, 26, 0.58);
+  --g-tile-hover: rgba(18, 18, 26, 0.7);
+  --g-tile-line: rgba(255, 255, 255, 0.14);
+  --g-tile-highlight: rgba(255, 255, 255, 0.12);
+  --g-tile-shadow: 0 6px 18px rgba(0, 0, 0, 0.28), 0 1px 3px rgba(0, 0, 0, 0.2);
+  --g-card: rgba(22, 22, 30, 0.93);
+  --g-card-line: rgba(255, 255, 255, 0.12);
+  --g-card-blur: blur(28px) saturate(150%);
+  --g-card-shadow: 0 24px 60px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.25);
+  --g-card-highlight: rgba(255, 255, 255, 0.07);
+  --g-fg: #ffffff;
+  --g-dim: rgba(255, 255, 255, 0.72);
+  --g-faint: rgba(255, 255, 255, 0.46);
+  --g-text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --g-accent: #a78bfa;
+  --g-on-accent: #160b33;
+  --g-track: rgba(255, 255, 255, 0.15);
+  --g-hover: rgba(255, 255, 255, 0.08);
+  --g-input: rgba(255, 255, 255, 0.07);
+  --g-input-line: rgba(255, 255, 255, 0.12);
+  --g-good: #4ade80;
+  --g-warn: #fbbf24;
+  --g-bad: #f87171;
+  --g-chart-2: #67e8f9;
+  --g-chart-3: #fcd34d;
+  --g-chart-4: #f9a8d4;
+  --g-chart-5: #86efac;
+  --g-chart-6: #93c5fd;
+  --g-tile-blur: blur(18px) saturate(160%);
+}
+[data-theme="clear"][data-widget-style="black"] {
+  --g-tile: rgba(12, 12, 15, 0.86);
+  --g-tile-hover: rgba(24, 24, 28, 0.9);
+  --g-tile-line: rgba(255, 255, 255, 0.08);
+  --g-tile-highlight: rgba(255, 255, 255, 0.06);
+  --g-text-shadow: none;
+  --g-tile-blur: blur(10px);
+}
+[data-theme="clear"][data-widget-style="white"] {
+  color-scheme: light;
+  --g-tile: rgba(252, 252, 254, 0.9);
+  --g-tile-hover: rgba(255, 255, 255, 0.97);
+  --g-tile-line: rgba(0, 0, 0, 0.06);
+  --g-tile-highlight: rgba(255, 255, 255, 1);
+  --g-tile-shadow: 0 6px 18px rgba(10, 12, 30, 0.18), 0 1px 3px rgba(10, 12, 30, 0.1);
+  --g-card: rgba(255, 255, 255, 0.97);
+  --g-card-line: rgba(0, 0, 0, 0.08);
+  --g-card-highlight: rgba(255, 255, 255, 1);
+  --g-fg: #121217;
+  --g-dim: rgba(18, 18, 23, 0.62);
+  --g-faint: rgba(18, 18, 23, 0.42);
+  --g-text-shadow: none;
+  --g-accent: #7c3aed;
+  --g-on-accent: #ffffff;
+  --g-track: rgba(0, 0, 0, 0.09);
+  --g-hover: rgba(0, 0, 0, 0.05);
+  --g-input: rgba(0, 0, 0, 0.045);
+  --g-input-line: rgba(0, 0, 0, 0.1);
+  --g-good: #16a34a;
+  --g-warn: #d97706;
+  --g-bad: #dc2626;
+  --g-tile-blur: blur(10px);
+}
+
+/* ---- live glass ------------------------------------------------------------------------------ */
+/* The WebGL glass draws the refracted desktop under the bar: the bar only adds its tint. */
+[data-theme][data-live-glass="on"] {
+  --g-bar: var(--g-glass-tint);
+  --g-bar-blur: none;
+}
+[data-theme="clear"][data-widget-style="frosted"][data-live-glass="on"] {
+  --g-tile: rgba(14, 16, 26, 0.2);
+  --g-tile-hover: rgba(14, 16, 26, 0.28);
+  --g-tile-line: rgba(255, 255, 255, 0.2);
+  --g-tile-blur: none;
+  --g-tile-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
+}
+/* No capture and no wallpaper: plain translucency, a little denser so text stays readable. No
+   backdrop blur: the window is transparent, so it would blur nothing but still be redrawn (in
+   software on GPU-less PCs) every time a tile changes. */
+[data-theme][data-live-glass="fallback"] {
+  --g-bar: var(--g-glass-fallback);
+  --g-bar-blur: none;
+}
+
+/* ---- surfaces -------------------------------------------------------------------------------- */
+.g-bar {
+  background: var(--g-bar);
+  border: 1px solid var(--g-bar-line);
+  box-shadow:
+    var(--g-bar-shadow),
+    inset 0 1px 0 var(--g-bar-highlight);
+  backdrop-filter: var(--g-bar-blur);
+  text-shadow: var(--g-text-shadow);
+  transition:
+    background-color 200ms ease,
+    border-color 200ms ease;
+}
+[data-theme="clear"] .g-bar {
+  box-shadow: none;
+}
+
+.g-tile {
+  box-shadow:
+    var(--g-tile-shadow),
+    inset 0 1px 0 var(--g-tile-highlight);
+  text-shadow: var(--g-text-shadow);
+  transition: background-color 160ms ease;
+}
+[data-theme="clear"] .g-tile {
+  backdrop-filter: var(--g-tile-blur, none);
+}
+
+.g-panel {
+  background: var(--g-card);
+  border: 1px solid var(--g-card-line);
+  box-shadow:
+    var(--g-card-shadow),
+    inset 0 1px 0 var(--g-card-highlight);
+  backdrop-filter: var(--g-card-blur);
+  border-radius: var(--g-radius-card);
+  text-shadow: none;
+}
+[data-glintbar-panel="menu"] {
+  --g-card: var(--g-menu);
+  --g-card-line: var(--g-menu-line);
+  border-radius: 13px;
+}
+
+/* ---- text ------------------------------------------------------------------------------------ */
+body {
+  text-rendering: optimizeLegibility;
+  font-optical-sizing: auto;
+  -moz-osx-font-smoothing: grayscale;
+}
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+::selection {
+  background: color-mix(in srgb, var(--g-accent) 35%, transparent);
+}
+
+/* ---- inputs ---------------------------------------------------------------------------------- */
+/* In the base layer so a component's own outline-none (a utility) still wins. */
+@layer base {
+  :where(button, a, input, select, textarea, [tabindex]):focus-visible {
+    outline: 2px solid var(--g-focus);
+    outline-offset: 2px;
+  }
+}
+input[type="text"],
+input[type="search"],
+input[type="number"],
+input[type="url"],
+input[type="password"],
+textarea,
+select {
+  accent-color: var(--g-accent);
+}
+.g-slider::-webkit-slider-thumb {
+  background: #fff;
+  box-shadow:
+    0 0 0 0.5px rgba(0, 0, 0, 0.12),
+    0 2px 6px rgba(0, 0, 0, 0.28);
+}
+.g-slider::-webkit-slider-runnable-track {
+  height: 5px;
+}
+.g-slider::-webkit-slider-thumb {
+  margin-top: -6.5px;
+}
+
+/* ---- the glass canvas ------------------------------------------------------------------------ */
+.g-glass-canvas {
+  position: fixed;
+  pointer-events: none;
+  z-index: 0;
+  contain: strict;
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  [data-theme] {
+    --g-glass-tint: var(--g-glass-fallback);
+  }
+}

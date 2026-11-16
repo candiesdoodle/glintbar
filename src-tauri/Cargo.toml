@@ -1,0 +1,115 @@
+[package]
+name = "glintbar"
+version = "0.1.2"
+description = "GlintBar - a widget dock for Windows"
+license = "MIT"
+edition = "2021"
+publish = false
+
+[lib]
+name = "glintbar_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["tray-icon", "image-png"] }
+tauri-plugin-single-instance = "2"
+tauri-plugin-autostart = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["sync", "time", "macros", "rt", "process"] }
+chrono = { version = "0.4", features = ["serde"] }
+thiserror = "2"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", default-features = false, features = ["fmt", "std"] }
+base64 = "0.22"
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "ico", "bmp"] }
+# native-tls = the Windows certificate store, so corporate TLS inspection works.
+reqwest = { version = "0.12", default-features = false, features = ["native-tls", "json", "gzip"] }
+keyring = { version = "3", features = ["windows-native"] }
+# Read-only access to local app databases (OpenCode history, Cursor state). Bundled: no system SQLite needed.
+rusqlite = { version = "0.43", features = ["bundled"] }
+# online slice: PKCE for OAuth sign-in (both already in the lock via Tauri).
+sha2 = "0.10"
+getrandom = "0.3"
+
+[target.'cfg(windows)'.dependencies]
+# Must stay on the same version as Tauri's own `windows` dependency (see Cargo.lock) so HWND etc. match.
+windows = { version = "0.62", features = [
+    "ApplicationModel",
+    "Devices_Bluetooth",
+    "Devices_Enumeration",
+    "Devices_Radios",
+    "Foundation",
+    "Foundation_Collections",
+    "Globalization",
+    "Graphics_Imaging",
+    "Media_Control",
+    "Networking_Connectivity",
+    "Networking_NetworkOperators",
+    "Storage_Streams",
+    "System_Power",
+    "UI_Notifications",
+    "UI_Notifications_Management",
+    "Win32_Devices_Display",
+    "Win32_Devices_FunctionDiscovery",
+    "Win32_Foundation",
+    "Win32_Globalization",
+    "Win32_Graphics_Dwm",
+    "Win32_Graphics_Gdi",
+    "Win32_Media_Audio",
+    "Win32_Media_Audio_Endpoints",
+    "Win32_NetworkManagement_IpHelper",
+    "Win32_NetworkManagement_Ndis",
+    "Win32_NetworkManagement_WiFi",
+    "Win32_Security",
+    "Win32_Security_Credentials",
+    "Win32_Storage_FileSystem",
+    "Win32_Storage_Packaging_Appx",
+    "Win32_Storage_Xps",
+    "Win32_System_Com",
+    "Win32_System_Com_StructuredStorage",
+    "Win32_System_DataExchange",
+    "Win32_System_Diagnostics_Debug",
+    "Win32_System_Diagnostics_ToolHelp",
+    "Win32_System_IO",
+    "Win32_System_Ioctl",
+    "Win32_System_Kernel",
+    "Win32_System_LibraryLoader",
+    "Win32_System_Memory",
+    "Win32_System_Ole",
+    "Win32_System_Performance",
+    "Win32_System_Power",
+    "Win32_System_ProcessStatus",
+    "Win32_System_Registry",
+    "Win32_System_RemoteDesktop",
+    "Win32_System_StationsAndDesktops",
+    "Win32_System_SystemInformation",
+    "Win32_System_Threading",
+    "Win32_System_Variant",
+    "Win32_System_WinRT",
+    "Win32_System_Wmi",
+    "Win32_UI_Accessibility",
+    "Win32_UI_Controls",
+    "Win32_UI_HiDpi",
+    "Win32_UI_Input_KeyboardAndMouse",
+    "Win32_UI_Shell",
+    "Win32_UI_Shell_Common",
+    "Win32_UI_Shell_PropertiesSystem",
+    "Win32_UI_WindowsAndMessaging",
+] }
+windows-core = "0.62"
+# Same version the windows crate uses (IIterable for WinRT property lists).
+windows-collections = "0.3"
+
+[profile.dev]
+debug = 0
+
+[profile.release]
+opt-level = 2
+lto = "thin"
+codegen-units = 16
+strip = true
+# panic stays "unwind": tokio catches a panicking service handler instead of killing the dock.

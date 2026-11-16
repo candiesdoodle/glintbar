@@ -1,0 +1,305 @@
+@import "tailwindcss";
+
+/*
+ * Every colour comes from a --g-* variable so each theme restyles every widget.
+ * Use the Tailwind names below in components: bg-tile, text-fg, text-dim, border-line, ...
+ */
+@theme inline {
+  --color-bar: var(--g-bar);
+  --color-tile: var(--g-tile);
+  --color-tile-hover: var(--g-tile-hover);
+  --color-line: var(--g-tile-line);
+  --color-card: var(--g-card);
+  --color-card-line: var(--g-card-line);
+  --color-fg: var(--g-fg);
+  --color-dim: var(--g-dim);
+  --color-faint: var(--g-faint);
+  --color-accent: var(--g-accent);
+  --color-on-accent: var(--g-on-accent);
+  --color-track: var(--g-track);
+  --color-hover: var(--g-hover);
+  --color-input: var(--g-input);
+  --color-good: var(--g-good);
+  --color-warn: var(--g-warn);
+  --color-bad: var(--g-bad);
+  --radius-tile: var(--g-radius-tile);
+  --radius-bar: var(--g-radius-bar);
+  --radius-card: var(--g-radius-card);
+  --font-sans: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, "Inter", sans-serif;
+}
+
+:root {
+  --g-radius-tile: 12px;
+  --g-radius-bar: 18px;
+  --g-radius-card: 16px;
+  --g-good: #34c77b;
+  --g-warn: #f5a524;
+  --g-bad: #f0524f;
+  --g-on-accent: #ffffff;
+  --g-bar-blur: none;
+  --g-card-blur: none;
+  --g-bar-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
+  --g-card-shadow: 0 18px 48px rgba(0, 0, 0, 0.45);
+  color-scheme: dark;
+}
+
+/* ---- themes -------------------------------------------------------------------------------- */
+
+[data-theme="midnight"] {
+  --g-bar: rgba(17, 19, 38, 0.88);
+  --g-bar-line: rgba(255, 255, 255, 0.08);
+  --g-tile: rgba(255, 255, 255, 0.055);
+  --g-tile-hover: rgba(255, 255, 255, 0.1);
+  --g-tile-line: rgba(255, 255, 255, 0.05);
+  --g-card: rgba(21, 23, 44, 0.97);
+  --g-card-line: rgba(255, 255, 255, 0.09);
+  --g-fg: #eef0ff;
+  --g-dim: rgba(238, 240, 255, 0.62);
+  --g-faint: rgba(238, 240, 255, 0.38);
+  --g-accent: #8b93ff;
+  --g-track: rgba(255, 255, 255, 0.1);
+  --g-hover: rgba(255, 255, 255, 0.07);
+  --g-input: rgba(255, 255, 255, 0.055);
+}
+
+[data-theme="black"] {
+  --g-bar: rgba(8, 8, 9, 0.94);
+  --g-bar-line: rgba(255, 255, 255, 0.07);
+  --g-tile: #19191b;
+  --g-tile-hover: #222225;
+  --g-tile-line: rgba(255, 255, 255, 0.04);
+  --g-card: #121214;
+  --g-card-line: rgba(255, 255, 255, 0.08);
+  --g-fg: #f5f5f7;
+  --g-dim: rgba(245, 245, 247, 0.6);
+  --g-faint: rgba(245, 245, 247, 0.36);
+  --g-accent: #0a84ff;
+  --g-track: rgba(255, 255, 255, 0.1);
+  --g-hover: rgba(255, 255, 255, 0.07);
+  --g-input: rgba(255, 255, 255, 0.06);
+}
+
+[data-theme="white"] {
+  color-scheme: light;
+  --g-bar: rgba(248, 248, 251, 0.94);
+  --g-bar-line: rgba(0, 0, 0, 0.08);
+  --g-tile: rgba(0, 0, 0, 0.04);
+  --g-tile-hover: rgba(0, 0, 0, 0.07);
+  --g-tile-line: rgba(0, 0, 0, 0.04);
+  --g-card: #ffffff;
+  --g-card-line: rgba(0, 0, 0, 0.08);
+  --g-fg: #141418;
+  --g-dim: rgba(20, 20, 24, 0.6);
+  --g-faint: rgba(20, 20, 24, 0.38);
+  --g-accent: #0a6cff;
+  --g-track: rgba(0, 0, 0, 0.08);
+  --g-hover: rgba(0, 0, 0, 0.05);
+  --g-input: rgba(0, 0, 0, 0.045);
+  --g-bar-shadow: 0 8px 28px rgba(0, 0, 0, 0.16);
+  --g-card-shadow: 0 18px 48px rgba(0, 0, 0, 0.2);
+}
+
+/* Glass styles are plain translucency for now; the appearance slice adds real refraction. */
+[data-theme="glass"] {
+  --g-bar: rgba(28, 30, 44, 0.42);
+  --g-bar-line: rgba(255, 255, 255, 0.18);
+  --g-bar-blur: blur(26px) saturate(160%);
+  --g-tile: rgba(255, 255, 255, 0.1);
+  --g-tile-hover: rgba(255, 255, 255, 0.16);
+  --g-tile-line: rgba(255, 255, 255, 0.12);
+  --g-card: rgba(30, 32, 48, 0.72);
+  --g-card-line: rgba(255, 255, 255, 0.16);
+  --g-card-blur: blur(30px) saturate(160%);
+  --g-fg: #ffffff;
+  --g-dim: rgba(255, 255, 255, 0.7);
+  --g-faint: rgba(255, 255, 255, 0.45);
+  --g-accent: #7fd1ff;
+  --g-on-accent: #0b1a26;
+  --g-track: rgba(255, 255, 255, 0.16);
+  --g-hover: rgba(255, 255, 255, 0.1);
+  --g-input: rgba(255, 255, 255, 0.09);
+}
+
+[data-theme="ios-glass"] {
+  color-scheme: light;
+  --g-bar: rgba(246, 246, 250, 0.55);
+  --g-bar-line: rgba(255, 255, 255, 0.6);
+  --g-bar-blur: blur(30px) saturate(180%);
+  --g-tile: rgba(255, 255, 255, 0.5);
+  --g-tile-hover: rgba(255, 255, 255, 0.66);
+  --g-tile-line: rgba(255, 255, 255, 0.55);
+  --g-card: rgba(248, 248, 252, 0.82);
+  --g-card-line: rgba(255, 255, 255, 0.7);
+  --g-card-blur: blur(34px) saturate(180%);
+  --g-fg: #111116;
+  --g-dim: rgba(17, 17, 22, 0.62);
+  --g-faint: rgba(17, 17, 22, 0.4);
+  --g-accent: #007aff;
+  --g-track: rgba(0, 0, 0, 0.09);
+  --g-hover: rgba(0, 0, 0, 0.05);
+  --g-input: rgba(255, 255, 255, 0.55);
+  --g-bar-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
+}
+
+/* Clear: no bar, every tile is its own frosted chip. */
+[data-theme="clear"] {
+  --g-bar: transparent;
+  --g-bar-line: transparent;
+  --g-bar-shadow: none;
+  --g-tile: rgba(14, 14, 20, 0.62);
+  --g-tile-hover: rgba(14, 14, 20, 0.74);
+  --g-tile-line: rgba(255, 255, 255, 0.1);
+  --g-card: rgba(20, 20, 28, 0.9);
+  --g-card-line: rgba(255, 255, 255, 0.1);
+  --g-card-blur: blur(24px);
+  --g-fg: #ffffff;
+  --g-dim: rgba(255, 255, 255, 0.68);
+  --g-faint: rgba(255, 255, 255, 0.42);
+  --g-accent: #a78bfa;
+  --g-track: rgba(255, 255, 255, 0.14);
+  --g-hover: rgba(255, 255, 255, 0.08);
+  --g-input: rgba(255, 255, 255, 0.07);
+}
+[data-theme="clear"] .g-tile {
+  backdrop-filter: blur(14px);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+}
+
+/* ---- base ---------------------------------------------------------------------------------- */
+
+html,
+body,
+#root {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: transparent;
+}
+
+body {
+  font-family: var(--font-sans);
+  color: var(--g-fg);
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+  -webkit-user-select: none;
+  font-feature-settings: "tnum" 0;
+}
+
+input,
+textarea,
+[contenteditable="true"] {
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+/* Browser preview: a stand-in desktop behind the dock. */
+body.glintbar-preview {
+  background:
+    radial-gradient(1200px 600px at 20% 10%, #5b4bb7 0%, transparent 60%),
+    radial-gradient(900px 500px at 85% 30%, #1f7a9a 0%, transparent 60%),
+    linear-gradient(160deg, #1c1838 0%, #0f2a3a 100%);
+}
+
+.g-bar {
+  background: var(--g-bar);
+  border: 1px solid var(--g-bar-line);
+  box-shadow: var(--g-bar-shadow);
+  backdrop-filter: var(--g-bar-blur);
+}
+
+.g-panel {
+  background: var(--g-card);
+  border: 1px solid var(--g-card-line);
+  box-shadow: var(--g-card-shadow);
+  backdrop-filter: var(--g-card-blur);
+  border-radius: var(--g-radius-card);
+}
+
+.g-scroll-x {
+  scrollbar-width: none;
+}
+.g-scroll-x::-webkit-scrollbar {
+  display: none;
+}
+
+.g-scroll-y {
+  scrollbar-width: thin;
+  scrollbar-color: var(--g-track) transparent;
+}
+
+/* Press feedback for buttons and tiles. */
+.g-press {
+  transition:
+    transform 140ms ease,
+    background-color 140ms ease,
+    color 140ms ease;
+}
+.g-press:active {
+  transform: scale(0.96);
+}
+
+.g-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 22px;
+  background: transparent;
+}
+.g-slider::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 999px;
+  background: linear-gradient(to right, var(--g-accent) var(--fill, 0%), var(--g-track) var(--fill, 0%));
+}
+.g-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  margin-top: -6px;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+}
+.g-slider::-moz-range-track {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--g-track);
+}
+.g-slider::-moz-range-progress {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--g-accent);
+}
+.g-slider::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border: 0;
+  border-radius: 999px;
+  background: #fff;
+}
+
+@keyframes g-pop-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+}
+@keyframes g-pop-down {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+}
+.g-pop-up {
+  animation: g-pop-up 160ms ease-out;
+}
+.g-pop-down {
+  animation: g-pop-down 160ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    transition-duration: 1ms !important;
+  }
+}

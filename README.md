@@ -37,6 +37,22 @@ These were captured on a Windows machine during the automated test run. Tiles fo
 
 ![All 110 widgets, shown on nine docks](docs/screenshots/widgets.png)
 
+**Cards** (click a widget: CPU, calendar, quick toggles, weather)
+
+![Four widget cards open above the dock](docs/screenshots/cards.png)
+
+**Widget picker**
+
+![The widget picker with categories, search and previews](docs/screenshots/picker.png)
+
+**Settings**
+
+![The Appearance page in Settings with the six themes](docs/screenshots/settings.png)
+
+**Window previews**
+
+![A preview of an open window above its app icon](docs/screenshots/preview.png)
+
 ## Widgets
 
 | Category | Count | What is in it |

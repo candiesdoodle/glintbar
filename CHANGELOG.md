@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.1.5
+
+- Fixed: clicking a window preview, or an item in an app's right-click menu, also opened the Apps
+  settings card.
+- Magnification eases in and out, and the app icons no longer jump sideways when it starts (most
+  visible with Fill, left or right alignment).
+- New option, Highlight the active app (Settings > Dock, or the Apps card): the app whose window is
+  in front gets a coloured background.
+- Audio Output: click the tile's round icon to mute or unmute.
+- Tray: on Windows 11 22H2 and later, where tray icons can't be listed, a click on the tile opens
+  Windows' own hidden-icons flyout directly.
+
 ## 0.1.4
 
 - Settings > About links to the project page and to the issue list on GitHub.

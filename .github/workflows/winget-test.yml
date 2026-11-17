@@ -70,8 +70,23 @@ jobs:
           if ($LASTEXITCODE -ne 0 -and $LASTEXITCODE -ne -1978335192) { throw "winget validate failed with exit code $LASTEXITCODE" }
           Write-Host "== winget install"
           winget settings --enable LocalManifestFiles
-          winget install --manifest $dir --silent --accept-package-agreements --accept-source-agreements --disable-interactivity
-          if ($LASTEXITCODE -ne 0) { throw "winget install failed with exit code $LASTEXITCODE" }
+          $w = Start-Process -FilePath winget -ArgumentList @("install", "--manifest", $dir, "--silent", "--accept-package-agreements", "--accept-source-agreements", "--disable-interactivity", "--verbose-logs") -PassThru -NoNewWindow
+          $t0 = Get-Date
+          while (-not $w.HasExited -and ((Get-Date) - $t0).TotalSeconds -lt 150) {
+            Start-Sleep -Seconds 15
+            Write-Host "--- $(Get-Date -Format HH:mm:ss) winget running: $(-not $w.HasExited)"
+            Get-CimInstance Win32_Process | Where-Object { $_.Name -match 'setup|glintbar|winget|WindowsPackageManager|AppInstaller|Edge|msiexec|uninstall' } |
+              ForEach-Object { Write-Host ("  {0} pid={1} parent={2} cmd={3}" -f $_.Name, $_.ProcessId, $_.ParentProcessId, ("" + $_.CommandLine).Substring(0, [Math]::Min(200, ("" + $_.CommandLine).Length))) }
+          }
+          if (-not $w.HasExited) {
+            $log = Get-ChildItem "$env:LOCALAPPDATA\Packages\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe\LocalState\DiagOutputDir\*.log" -ErrorAction SilentlyContinue | Sort-Object LastWriteTime | Select-Object -Last 1
+            if ($log) { Write-Host "== tail of $($log.Name)"; Get-Content $log.FullName -Tail 45 }
+            Write-Host "installed so far: $(Test-Path (Join-Path $env:LOCALAPPDATA 'GlintBar\glintbar.exe'))"
+            Get-Process -Name "winget", "WindowsPackageManagerServer", "glintbar" -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+            Get-Process | Where-Object { $_.Path -like "*WinGet*setup*" } | Stop-Process -Force -ErrorAction SilentlyContinue
+            throw "winget install did not finish in 150 s"
+          }
+          if ($w.ExitCode -ne 0) { throw "winget install failed with exit code $($w.ExitCode)" }
           $exe = Join-Path $env:LOCALAPPDATA "GlintBar\glintbar.exe"
           if (-not (Test-Path $exe)) { throw "glintbar.exe is missing at $exe" }
           Write-Host "installed version: $((Get-Item $exe).VersionInfo.ProductVersion)"

@@ -1,0 +1,49 @@
+name: winget manifest test
+
+# Manual only. Validates and installs the winget manifest of one version on a Windows runner.
+# The manifest is read from the submission branch of the winget-pkgs fork.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version whose manifest to test (for example 0.1.4)
+        required: true
+
+jobs:
+  winget:
+    runs-on: windows-2025
+    timeout-minutes: 20
+    steps:
+      - name: Validate and install
+        shell: pwsh
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          $ErrorActionPreference = "Stop"
+          if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
+            Add-AppxPackage -RegisterByFamilyName -MainPackage Microsoft.DesktopAppInstaller_8wekyb3d8bbwe
+            Start-Sleep -Seconds 5
+          }
+          winget --version
+          $dir = Join-Path $env:RUNNER_TEMP "manifest"
+          New-Item -ItemType Directory -Force $dir | Out-Null
+          $base = "https://raw.githubusercontent.com/candiesdoodle/winget-pkgs/GlintBar.GlintBar-$env:VERSION/manifests/g/GlintBar/GlintBar/$env:VERSION"
+          foreach ($f in "GlintBar.GlintBar.installer.yaml", "GlintBar.GlintBar.locale.en-US.yaml", "GlintBar.GlintBar.yaml") {
+            Invoke-WebRequest -Uri "$base/$f" -OutFile (Join-Path $dir $f)
+          }
+          Write-Host "== winget validate"
+          winget validate --manifest $dir
+          if ($LASTEXITCODE -ne 0) { throw "winget validate failed with exit code $LASTEXITCODE" }
+          Write-Host "== winget install"
+          winget settings --enable LocalManifestFiles
+          winget install --manifest $dir --silent --accept-package-agreements --accept-source-agreements --disable-interactivity
+          if ($LASTEXITCODE -ne 0) { throw "winget install failed with exit code $LASTEXITCODE" }
+          $exe = Join-Path $env:LOCALAPPDATA "GlintBar\glintbar.exe"
+          if (-not (Test-Path $exe)) { throw "glintbar.exe is missing at $exe" }
+          Write-Host "installed version: $((Get-Item $exe).VersionInfo.ProductVersion)"
+          Write-Host "== winget list"
+          winget list --name GlintBar --accept-source-agreements --disable-interactivity
+          Write-Host "== winget uninstall"
+          winget uninstall --manifest $dir --silent --disable-interactivity
+          if ($LASTEXITCODE -ne 0) { throw "winget uninstall failed with exit code $LASTEXITCODE" }
+          if (Test-Path $exe) { throw "glintbar.exe is still there after the uninstall" }

@@ -159,6 +159,9 @@ export function AppsTile({ instanceId, config: own, setConfig, size, openCard, i
   const [mag, setMag] = useState<{ x: number; items: MagnifyItem[]; strength: number; contentLeft: number } | null>(null);
   const raf = useRef(0);
   const ramp = useRef({ from: 0, to: 0, start: 0, value: 0 });
+  // Where the icons sat when magnification started (client x plus the scroll offsets above the
+  // tile, so scrolling the dock doesn't count as a move). The padding keeps them there.
+  const anchor = useRef<number | null>(null);
   const pointerX = useRef(0);
   // Pointer inside the tile, including its magnified copies (React enter/leave follow portals).
   const [inside, setInside] = useState(false);
@@ -182,11 +185,13 @@ export function AppsTile({ instanceId, config: own, setConfig, size, openCard, i
     r.value = value;
     const el = rootRef.current;
     if ((done && value <= 0) || !el) {
+      anchor.current = null;
       setMag(null);
       return;
     }
     // The icons' left edge (the padding keeps it in place while the tile grows).
     const contentLeft = el.getBoundingClientRect().left + (parseFloat(el.style.paddingLeft) || 0);
+    if (anchor.current === null) anchor.current = contentLeft + scrollOffset(el);
     setMag({ x: pointerX.current, items: measure(), strength: value, contentLeft });
     if (!done) raf.current = requestAnimationFrame(() => frameRef.current());
   };
@@ -209,6 +214,7 @@ export function AppsTile({ instanceId, config: own, setConfig, size, openCard, i
     cancelAnimationFrame(raf.current);
     raf.current = 0;
     ramp.current = { from: 0, to: 0, start: 0, value: 0 };
+    anchor.current = null;
     setMag(null);
   }, []);
   useEffect(() => () => cancelAnimationFrame(raf.current), []);
@@ -233,16 +239,23 @@ export function AppsTile({ instanceId, config: own, setConfig, size, openCard, i
   useEffect(() => {
     if (!popup && magOn && !insideRef.current) aim(0);
   }, [popup, magOn]);
-  // A resize can move the tile: measure the icons and the padding split again.
-  const [layoutGen, setLayoutGen] = useState(0);
+  // The window or the bar changing size can move the tile: check the padding split and measure
+  // the icons again.
+  const [, setLayoutGen] = useState(0);
   useEffect(() => {
+    const bar = rootRef.current?.closest("[data-glintbar-bar]");
     if (!magOn) return;
-    const onResize = () => {
+    const recheck = () => {
       setLayoutGen((n) => n + 1);
       kick();
     };
-    window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
+    window.addEventListener("resize", recheck);
+    const ro = bar && typeof ResizeObserver !== "undefined" ? new ResizeObserver(recheck) : undefined;
+    if (bar) ro?.observe(bar);
+    return () => {
+      window.removeEventListener("resize", recheck);
+      ro?.disconnect();
+    };
   }, [magOn]);
   useEffect(() => {
     if (!config.magnify) stopMag();
@@ -250,20 +263,20 @@ export function AppsTile({ instanceId, config: own, setConfig, size, openCard, i
   // Room for the magnified icons: 2 x pad of extra width, growing with the strength so the
   // neighbours part as the icons grow. How much of it goes on the left is measured (the dock's
   // alignment, Fill, scrolling and the tile's place all change how far the tile's left edge moves),
-  // so the icons stay exactly where they were.
+  // so the icons stay where they were when magnification started.
   const pad = config.magnify && mag ? Math.ceil(magnifySpread(config.magnifyScale) * m.slot) * mag.strength : 0;
   const [share, setShare] = useState(0.5);
   const padLeft = 2 * pad * share;
   const padRight = 2 * pad - padLeft;
+  // After every render while padded (so also after the last frame of a ramp): the tile's left edge
+  // depends only on its outer width, not on the split, so one correction before paint is exact.
   useLayoutEffect(() => {
     const el = rootRef.current;
-    if (!el || pad <= 0) return;
-    const moved = unpaddedLeft(el, width) - el.getBoundingClientRect().left;
+    if (!el || pad <= 0 || anchor.current === null) return;
+    const moved = anchor.current - scrollOffset(el) - el.getBoundingClientRect().left;
     const next = padShare(moved, 2 * pad);
-    // Runs before paint, and the tile's outer width doesn't depend on the split, so one
-    // correction is exact. The share is kept as the guess for the next frame.
     if (Math.abs(next - share) * 2 * pad > 0.25) setShare(next);
-  }, [pad, width, edge, layoutGen]);
+  });
   // While the pointer is on the tile the window keeps room above the strip for the biggest icon
   // (the window only ever grows, so this never resizes it twice), and the window region takes in
   // that band over the tile so the enlarged icons are drawn and clickable. Released on leave.
@@ -604,7 +617,14 @@ export function AppsTile({ instanceId, config: own, setConfig, size, openCard, i
       ref={rootRef}
       data-glintbar-drop={`apps:${instanceId}`}
       className={cx("glintbar-apps-root relative h-full", dropOver !== undefined && "rounded-tile ring-2 ring-accent/70")}
-      style={{ width: isSample ? "100%" : width + pad * 2, paddingLeft: padLeft, paddingRight: padRight }}
+      style={{
+        width: isSample ? "100%" : width + pad * 2,
+        paddingLeft: padLeft,
+        paddingRight: padRight,
+        // Never animate the width or padding: with "reduce motion" on, styles.css gives every
+        // element a 1 ms transition, and the layout read right after a change would be stale.
+        transitionProperty: "none",
+      }}
       onPointerMove={onRootMove}
       onPointerEnter={onRootEnter}
       onPointerLeave={onRootLeave}
@@ -671,20 +691,11 @@ export function AppsTile({ instanceId, config: own, setConfig, size, openCard, i
   );
 }
 
-/**
- * Where the tile's left edge would be without the magnification room: the room is taken away for
- * a moment and put back (synchronously, so nothing is painted), and any scroll position the
- * shorter row clamped is restored.
- */
-function unpaddedLeft(el: HTMLElement, width: number): number {
-  const scrolled: [HTMLElement, number][] = [];
-  for (let p = el.parentElement; p; p = p.parentElement) if (p.scrollLeft) scrolled.push([p, p.scrollLeft]);
-  const { width: w, paddingLeft, paddingRight } = el.style;
-  Object.assign(el.style, { width: `${width}px`, paddingLeft: "0px", paddingRight: "0px" });
-  const left = el.getBoundingClientRect().left;
-  Object.assign(el.style, { width: w, paddingLeft, paddingRight });
-  for (const [p, s] of scrolled) p.scrollLeft = s;
-  return left;
+/** Sum of the horizontal scroll offsets above `el`: the dock's own scrolling isn't a layout change. */
+function scrollOffset(el: HTMLElement): number {
+  let sum = 0;
+  for (let p = el.parentElement; p; p = p.parentElement) sum += p.scrollLeft;
+  return sum;
 }
 
 function rectOf(el: HTMLElement) {

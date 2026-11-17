@@ -175,7 +175,9 @@ export function Magnifier({
               transform: `translateX(${shift}px) scale(${s})`,
               transformOrigin: edge === "bottom" ? "50% 100%" : "50% 0%",
               // No CSS transition: the copies are moved every frame while easing, and follow the
-              // pointer directly after that (a transition would only add lag).
+              // pointer directly after that (a transition would only add lag). Explicit, because
+              // "reduce motion" gives every element a 1 ms transition (styles.css).
+              transitionProperty: "none",
               zIndex: Math.round(s * 10),
             }}
             {...bind(it.key)}

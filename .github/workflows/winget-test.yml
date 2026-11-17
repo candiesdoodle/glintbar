@@ -1,6 +1,8 @@
 name: winget manifest test
 
-# Manual only. Validates and installs the winget manifest of one version on a Windows runner.
+# Manual only. Runs the setup program silently and validates the winget manifest of one version.
+# (winget install with a local manifest cannot be tested here: Windows does not start an unsigned
+# installer that winget downloaded on a runner, and winget then waits for ever.)
 # The manifest is read from the submission branch of the winget-pkgs fork.
 on:
   workflow_dispatch:
@@ -14,7 +16,7 @@ jobs:
     runs-on: windows-2025
     timeout-minutes: 20
     steps:
-      - name: Silent run of the setup program (diagnosis)
+      - name: Silent install and uninstall with the setup program
         shell: pwsh
         timeout-minutes: 6
         env:
@@ -46,7 +48,7 @@ jobs:
           Write-Host "installed: $(Test-Path $exe)"
           $un = Join-Path $env:LOCALAPPDATA "GlintBar\uninstall.exe"
           if (Test-Path $un) { $u = Start-Process -FilePath $un -ArgumentList "/S" -PassThru; $u.WaitForExit(90000) | Out-Null; Start-Sleep 5; Write-Host "after uninstall, exe present: $(Test-Path $exe)" }
-      - name: Validate and install
+      - name: Validate the manifest
         timeout-minutes: 8
         shell: pwsh
         env:
@@ -68,31 +70,3 @@ jobs:
           winget validate --manifest $dir
           # -1978335192 is "validation succeeded with warnings".
           if ($LASTEXITCODE -ne 0 -and $LASTEXITCODE -ne -1978335192) { throw "winget validate failed with exit code $LASTEXITCODE" }
-          Write-Host "== winget install"
-          winget settings --enable LocalManifestFiles
-          $w = Start-Process -FilePath winget -ArgumentList @("install", "--manifest", $dir, "--silent", "--accept-package-agreements", "--accept-source-agreements", "--disable-interactivity", "--verbose-logs") -PassThru -NoNewWindow
-          $t0 = Get-Date
-          while (-not $w.HasExited -and ((Get-Date) - $t0).TotalSeconds -lt 150) {
-            Start-Sleep -Seconds 15
-            Write-Host "--- $(Get-Date -Format HH:mm:ss) winget running: $(-not $w.HasExited)"
-            Get-CimInstance Win32_Process | Where-Object { $_.Name -match 'setup|glintbar|winget|WindowsPackageManager|AppInstaller|Edge|msiexec|uninstall' } |
-              ForEach-Object { Write-Host ("  {0} pid={1} parent={2} cmd={3}" -f $_.Name, $_.ProcessId, $_.ParentProcessId, ("" + $_.CommandLine).Substring(0, [Math]::Min(200, ("" + $_.CommandLine).Length))) }
-          }
-          if (-not $w.HasExited) {
-            $log = Get-ChildItem "$env:LOCALAPPDATA\Packages\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe\LocalState\DiagOutputDir\*.log" -ErrorAction SilentlyContinue | Sort-Object LastWriteTime | Select-Object -Last 1
-            if ($log) { Write-Host "== tail of $($log.Name)"; Get-Content $log.FullName -Tail 45 }
-            Write-Host "installed so far: $(Test-Path (Join-Path $env:LOCALAPPDATA 'GlintBar\glintbar.exe'))"
-            Get-Process -Name "winget", "WindowsPackageManagerServer", "glintbar" -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
-            Get-Process | Where-Object { $_.Path -like "*WinGet*setup*" } | Stop-Process -Force -ErrorAction SilentlyContinue
-            throw "winget install did not finish in 150 s"
-          }
-          if ($w.ExitCode -ne 0) { throw "winget install failed with exit code $($w.ExitCode)" }
-          $exe = Join-Path $env:LOCALAPPDATA "GlintBar\glintbar.exe"
-          if (-not (Test-Path $exe)) { throw "glintbar.exe is missing at $exe" }
-          Write-Host "installed version: $((Get-Item $exe).VersionInfo.ProductVersion)"
-          Write-Host "== winget list"
-          winget list --name GlintBar --accept-source-agreements --disable-interactivity
-          Write-Host "== winget uninstall"
-          winget uninstall --manifest $dir --silent --disable-interactivity
-          if ($LASTEXITCODE -ne 0) { throw "winget uninstall failed with exit code $LASTEXITCODE" }
-          if (Test-Path $exe) { throw "glintbar.exe is still there after the uninstall" }

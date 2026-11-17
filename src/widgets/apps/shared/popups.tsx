@@ -102,7 +102,11 @@ export function FloatingPanel({
   }, [id, keepOpenOn]);
   return createPortal(
     <Popover id={id} anchor={anchor} width={width} maxHeight={maxHeight} className={className} offset={lift}>
-      {children}
+      {/* React events from a portal still reach the tile that rendered it: without this, a click
+          in a panel would also count as a click on the tile and open its card. */}
+      <div className="contents" onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}>
+        {children}
+      </div>
     </Popover>,
     document.body,
   );

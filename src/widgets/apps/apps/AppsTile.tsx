@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as RMouseEvent, type PointerEvent as RPointerEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent as RMouseEvent, type PointerEvent as RPointerEvent, type ReactNode } from "react";
 import { registerHit } from "../../../dock/hitRegion";
 import { setOverlayHeight } from "../../../dock/overlay";
 import { createPortal } from "react-dom";
@@ -27,7 +27,7 @@ import { AppMenu } from "./AppMenu";
 import { AppVisual } from "./AppVisual";
 import { metrics, useAppsView, type AppsConfig } from "./config";
 import { GroupPanel } from "./GroupPanel";
-import { Magnifier, magnifyRoom, magnifySpread, type ItemHandlers, type MagnifyItem } from "./Magnifier";
+import { Magnifier, magnifyRamp, magnifyRoom, magnifySpread, padShare, type ItemHandlers, type MagnifyItem } from "./Magnifier";
 import { Previews } from "./Previews";
 import { StackPanel } from "./StackPanel";
 
@@ -153,8 +153,13 @@ export function AppsTile({ instanceId, config: own, setConfig, size, openCard, i
   };
 
   // ---- magnification ------------------------------------------------------------------------------
-  const [mag, setMag] = useState<{ x: number; items: MagnifyItem[] } | null>(null);
+  // The strength eases from 0 to 1 when the pointer comes onto the tile and back to 0 when it
+  // leaves; the scale and the tile's extra room follow it. Frames run only during those ramps; at
+  // full strength each pointer move schedules one frame, and nothing runs while the pointer rests.
+  const [mag, setMag] = useState<{ x: number; items: MagnifyItem[]; strength: number; contentLeft: number } | null>(null);
   const raf = useRef(0);
+  const ramp = useRef({ from: 0, to: 0, start: 0, value: 0 });
+  const pointerX = useRef(0);
   // Pointer inside the tile, including its magnified copies (React enter/leave follow portals).
   const [inside, setInside] = useState(false);
   const insideRef = useRef(false);
@@ -170,11 +175,47 @@ export function AppsTile({ instanceId, config: own, setConfig, size, openCard, i
     }
     return out;
   }, [apps, config.showStart]);
+  const frame = () => {
+    raf.current = 0;
+    const r = ramp.current;
+    const { value, done } = magnifyRamp(r.from, r.to, performance.now() - r.start);
+    r.value = value;
+    const el = rootRef.current;
+    if ((done && value <= 0) || !el) {
+      setMag(null);
+      return;
+    }
+    // The icons' left edge (the padding keeps it in place while the tile grows).
+    const contentLeft = el.getBoundingClientRect().left + (parseFloat(el.style.paddingLeft) || 0);
+    setMag({ x: pointerX.current, items: measure(), strength: value, contentLeft });
+    if (!done) raf.current = requestAnimationFrame(() => frameRef.current());
+  };
+  const frameRef = useRef(frame);
+  useLayoutEffect(() => {
+    frameRef.current = frame;
+  });
+  const kick = () => {
+    if (!raf.current) raf.current = requestAnimationFrame(() => frameRef.current());
+  };
+  /** Ease towards on (1) or off (0), starting from the strength there is now. */
+  const aim = (to: 0 | 1) => {
+    const r = ramp.current;
+    if (r.to !== to) ramp.current = { from: r.value, to, start: performance.now(), value: r.value };
+    else if (to === 0 && r.value === 0) return;
+    kick();
+  };
+  /** Off at once, no ramp (a drag starts, the setting is turned off). */
+  const stopMag = useCallback(() => {
+    cancelAnimationFrame(raf.current);
+    raf.current = 0;
+    ramp.current = { from: 0, to: 0, start: 0, value: 0 };
+    setMag(null);
+  }, []);
+  useEffect(() => () => cancelAnimationFrame(raf.current), []);
   const onRootMove = (e: RPointerEvent) => {
     if (!config.magnify || isSample || dragRef.current?.started) return;
-    const x = e.clientX;
-    cancelAnimationFrame(raf.current);
-    raf.current = requestAnimationFrame(() => setMag({ x, items: measure() }));
+    pointerX.current = e.clientX;
+    aim(1);
   };
   const onRootEnter = () => {
     insideRef.current = true;
@@ -183,25 +224,46 @@ export function AppsTile({ instanceId, config: own, setConfig, size, openCard, i
   const onRootLeave = () => {
     insideRef.current = false;
     setInside(false);
-    cancelAnimationFrame(raf.current);
     // Magnified apps stay put while one of their menus is open.
-    if (usePopup.getState().open?.owner === instanceId && usePopup.getState().open?.kind === "menu") return;
-    setMag(null);
+    const open = usePopup.getState().open;
+    if (open?.owner === instanceId && open.kind === "menu") return;
+    aim(0); // keeps the last pointer x while it fades
   };
+  const magOn = !!mag;
   useEffect(() => {
-    if (!popup && mag && !insideRef.current) setMag(null);
-  }, [popup, mag]);
+    if (!popup && magOn && !insideRef.current) aim(0);
+  }, [popup, magOn]);
+  // A resize can move the tile: measure the icons and the padding split again.
+  const [layoutGen, setLayoutGen] = useState(0);
   useEffect(() => {
-    if (!mag) return;
-    const onResize = () => setMag((cur) => (cur ? { x: cur.x, items: measure() } : cur));
+    if (!magOn) return;
+    const onResize = () => {
+      setLayoutGen((n) => n + 1);
+      kick();
+    };
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
-  }, [mag, measure]);
+  }, [magOn]);
   useEffect(() => {
-    if (!config.magnify) setMag(null);
-  }, [config.magnify]);
-  // Room for the magnified icons on both sides (the dock grows while you point at it).
-  const magPad = config.magnify && mag ? Math.ceil(magnifySpread(config.magnifyScale) * m.slot) : 0;
+    if (!config.magnify) stopMag();
+  }, [config.magnify, stopMag]);
+  // Room for the magnified icons: 2 x pad of extra width, growing with the strength so the
+  // neighbours part as the icons grow. How much of it goes on the left is measured (the dock's
+  // alignment, Fill, scrolling and the tile's place all change how far the tile's left edge moves),
+  // so the icons stay exactly where they were.
+  const pad = config.magnify && mag ? Math.ceil(magnifySpread(config.magnifyScale) * m.slot) * mag.strength : 0;
+  const [share, setShare] = useState(0.5);
+  const padLeft = 2 * pad * share;
+  const padRight = 2 * pad - padLeft;
+  useLayoutEffect(() => {
+    const el = rootRef.current;
+    if (!el || pad <= 0) return;
+    const moved = unpaddedLeft(el, width) - el.getBoundingClientRect().left;
+    const next = padShare(moved, 2 * pad);
+    // Runs before paint, and the tile's outer width doesn't depend on the split, so one
+    // correction is exact. The share is kept as the guess for the next frame.
+    if (Math.abs(next - share) * 2 * pad > 0.25) setShare(next);
+  }, [pad, width, edge, layoutGen]);
   // While the pointer is on the tile the window keeps room above the strip for the biggest icon
   // (the window only ever grows, so this never resizes it twice), and the window region takes in
   // that band over the tile so the enlarged icons are drawn and clickable. Released on leave.
@@ -239,7 +301,7 @@ export function AppsTile({ instanceId, config: own, setConfig, size, openCard, i
       if (!d.started) {
         if (Math.hypot(d.dx, d.dy) < DRAG_THRESHOLD) return;
         d.started = true;
-        setMag(null);
+        stopMag();
         setLabelFor(null);
         closePopup();
       }
@@ -277,7 +339,7 @@ export function AppsTile({ instanceId, config: own, setConfig, size, openCard, i
       }
       setDragView({ ...d });
     },
-    [apps, pinnedCount, m.height],
+    [apps, pinnedCount, m.height, stopMag],
   );
 
   const onUp = useCallback(() => {
@@ -542,7 +604,7 @@ export function AppsTile({ instanceId, config: own, setConfig, size, openCard, i
       ref={rootRef}
       data-glintbar-drop={`apps:${instanceId}`}
       className={cx("glintbar-apps-root relative h-full", dropOver !== undefined && "rounded-tile ring-2 ring-accent/70")}
-      style={{ width: isSample ? "100%" : width + magPad * 2, paddingInline: magPad }}
+      style={{ width: isSample ? "100%" : width + pad * 2, paddingLeft: padLeft, paddingRight: padRight }}
       onPointerMove={onRootMove}
       onPointerEnter={onRootEnter}
       onPointerLeave={onRootLeave}
@@ -559,7 +621,20 @@ export function AppsTile({ instanceId, config: own, setConfig, size, openCard, i
       {isSample && <TileSampleBadge />}
 
       {magnifying && mag && (
-        <Magnifier owner={instanceId} items={mag.items} x={mag.x} max={config.magnifyScale} m={m} style={config.style} edge={edge} label={config.hoverNames} showActive={config.highlightActive} bind={bindMagnified} />
+        <Magnifier
+          owner={instanceId}
+          items={mag.items}
+          x={mag.x}
+          max={1 + (config.magnifyScale - 1) * mag.strength}
+          // Also on screen: in a dock scrolled to its end the extra room can lie past the edge.
+          bounds={{ left: Math.max(0, mag.contentLeft - padLeft), right: Math.min(window.innerWidth, mag.contentLeft + width + padRight) }}
+          m={m}
+          style={config.style}
+          edge={edge}
+          label={config.hoverNames}
+          showActive={config.highlightActive}
+          bind={bindMagnified}
+        />
       )}
       {labelText && labelEl && !popup && !drag?.started && hovered === labelFor && <HoverLabel anchor={anchorOf(labelEl)} text={labelText} />}
 
@@ -594,6 +669,22 @@ export function AppsTile({ instanceId, config: own, setConfig, size, openCard, i
       )}
     </div>
   );
+}
+
+/**
+ * Where the tile's left edge would be without the magnification room: the room is taken away for
+ * a moment and put back (synchronously, so nothing is painted), and any scroll position the
+ * shorter row clamped is restored.
+ */
+function unpaddedLeft(el: HTMLElement, width: number): number {
+  const scrolled: [HTMLElement, number][] = [];
+  for (let p = el.parentElement; p; p = p.parentElement) if (p.scrollLeft) scrolled.push([p, p.scrollLeft]);
+  const { width: w, paddingLeft, paddingRight } = el.style;
+  Object.assign(el.style, { width: `${width}px`, paddingLeft: "0px", paddingRight: "0px" });
+  const left = el.getBoundingClientRect().left;
+  Object.assign(el.style, { width: w, paddingLeft, paddingRight });
+  for (const [p, s] of scrolled) p.scrollLeft = s;
+  return left;
 }
 
 function rectOf(el: HTMLElement) {

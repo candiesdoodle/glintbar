@@ -14,7 +14,40 @@ jobs:
     runs-on: windows-2025
     timeout-minutes: 20
     steps:
+      - name: Silent run of the setup program (diagnosis)
+        shell: pwsh
+        timeout-minutes: 6
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          $setup = Join-Path $env:RUNNER_TEMP "setup.exe"
+          Invoke-WebRequest -Uri "https://github.com/candiesdoodle/glintbar/releases/download/v$env:VERSION/GlintBar_$($env:VERSION)_x64-setup.exe" -OutFile $setup
+          $guid = "{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}"
+          foreach ($k in "HKLM:\SOFTWARE\WOW6432Node\Microsoft\EdgeUpdate\Clients\$guid", "HKLM:\SOFTWARE\Microsoft\EdgeUpdate\Clients\$guid", "HKCU:\SOFTWARE\Microsoft\EdgeUpdate\Clients\$guid") {
+            $pv = (Get-ItemProperty -Path $k -Name pv -ErrorAction SilentlyContinue).pv
+            Write-Host "WebView2 pv at $k : '$pv'"
+          }
+          $p = Start-Process -FilePath $setup -ArgumentList "/S" -PassThru
+          $deadline = (Get-Date).AddSeconds(150)
+          while (-not $p.HasExited -and (Get-Date) -lt $deadline) {
+            Start-Sleep -Seconds 15
+            Write-Host "--- $(Get-Date -Format HH:mm:ss) setup running: $(-not $p.HasExited)"
+            Get-CimInstance Win32_Process | Where-Object { $_.CreationDate -gt (Get-Date).AddMinutes(-4) -and $_.Name -notmatch 'conhost|pwsh|powershell|svchost|WmiPrvSE' } |
+              ForEach-Object { Write-Host ("  {0} pid={1} parent={2} cmd={3}" -f $_.Name, $_.ProcessId, $_.ParentProcessId, ("" + $_.CommandLine).Substring(0, [Math]::Min(160, ("" + $_.CommandLine).Length))) }
+            Get-Process | Where-Object { $_.MainWindowTitle } | ForEach-Object { Write-Host ("  window: {0} '{1}'" -f $_.ProcessName, $_.MainWindowTitle) }
+          }
+          if (-not $p.HasExited) {
+            Write-Host "setup did not finish in 150 s; stopping it"
+            Get-Process -Name "setup", "MicrosoftEdgeWebview2Setup", "MicrosoftEdgeUpdate", "glintbar" -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+            throw "the setup program hangs in silent mode"
+          }
+          Write-Host "setup exit code: $($p.ExitCode)"
+          $exe = Join-Path $env:LOCALAPPDATA "GlintBar\glintbar.exe"
+          Write-Host "installed: $(Test-Path $exe)"
+          $un = Join-Path $env:LOCALAPPDATA "GlintBar\uninstall.exe"
+          if (Test-Path $un) { $u = Start-Process -FilePath $un -ArgumentList "/S" -PassThru; $u.WaitForExit(90000) | Out-Null; Start-Sleep 5; Write-Host "after uninstall, exe present: $(Test-Path $exe)" }
       - name: Validate and install
+        timeout-minutes: 8
         shell: pwsh
         env:
           VERSION: ${{ inputs.version }}

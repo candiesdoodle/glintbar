@@ -6,11 +6,25 @@ import { defineWidget, type CardProps, type TileProps } from "../../../core/widg
 import { Button, CardFrame, EmptyState, ErrorState, Section, Skeleton, TileFrame } from "../../../ui";
 import type { TrayIcon, TrayList } from "../shared/types";
 
-function TrayTile({ size }: TileProps) {
+function TrayTile({ size, isSample }: TileProps) {
+  // Asked once: whether this Windows lets GlintBar list the icons does not change while it runs.
+  const list = useService<TrayList>("system", "tray_list", undefined, { enabled: !isSample });
+  // Where the icons can't be listed the card would be empty, so a click opens Windows' own
+  // "hidden icons" flyout straight away.
+  const direct = list.data !== undefined && list.data !== null && !list.data.supported;
   return (
-    <TileFrame padded={false} className="justify-center" title="Tray icons">
-      <ChevronUp size={Math.round(size * 0.44)} className="text-dim" strokeWidth={2.4} />
-    </TileFrame>
+    <div
+      className="h-full w-full"
+      onClick={(e) => {
+        if (!direct) return;
+        e.stopPropagation();
+        call("system", "tray_overflow").catch((err) => console.warn("tray: could not open the flyout", err));
+      }}
+    >
+      <TileFrame padded={false} className="justify-center" title={direct ? "Hidden icons" : "Tray icons"}>
+        <ChevronUp size={Math.round(size * 0.44)} className="text-dim" strokeWidth={2.4} />
+      </TileFrame>
+    </div>
   );
 }
 
@@ -121,7 +135,7 @@ export default defineWidget({
   id: "system.tray",
   name: "Tray",
   category: "System",
-  description: "Your notification-area icons in a grid; clicks work as on the taskbar.",
+  description: "Your notification-area icons in a grid. On Windows 11 22H2 and later it opens Windows' own hidden-icons flyout instead.",
   keywords: ["notification area", "system tray", "icons", "hidden icons", "overflow"],
   icon: ChevronUp,
   size: "s",

@@ -81,9 +81,16 @@ These were captured on a Windows machine during the automated test run. Tiles fo
 2. Run it. The installer is not code-signed, so Windows SmartScreen shows "Windows protected your PC". Click **More info**, then **Run anyway**.
 3. Start GlintBar from the Start menu. To start it when you sign in, switch on Settings > General > Launch at startup.
 
+Or install with [Scoop](https://scoop.sh/):
+
+```sh
+scoop bucket add glintbar https://github.com/candiesdoodle/glintbar
+scoop install glintbar
+```
+
 GlintBar needs a 64-bit (x64) PC with Windows 10 or 11. The installer adds Microsoft Edge WebView2 if it is missing.
 
-Updating works by installing a newer version on top of the current one, and your settings carry over. To remove GlintBar, open Settings > Apps > Installed apps in Windows and uninstall it there.
+Updating works by installing a newer version on top of the current one, and your settings carry over. To remove GlintBar, open Settings > Apps > Installed apps in Windows and uninstall it there. With Scoop, use `scoop update glintbar` and `scoop uninstall glintbar` instead.
 
 ## Getting started
 

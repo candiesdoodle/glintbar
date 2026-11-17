@@ -1,7 +1,8 @@
 //! Dock watchdog. Every few seconds, and shortly after the foreground window or the displays
 //! change, it checks each dock window that should be on screen: the window exists, is shown, is
 //! not minimised, is topmost and not pushed under another topmost window, sits where GlintBar put it
-//! on a monitor that still exists, and its window region (what it draws and takes clicks in)
+//! on the monitor the plan gives it (not pushed off-screen, not left on another display), on a
+//! monitor that still exists, and its window region (what it draws and takes clicks in)
 //! covers the bar. When something is off it logs ONE info line saying what (label, monitor,
 //! expected vs actual rect, visibility, region, window and monitor DPI, the window above the dock,
 //! the window in front and its rect) and repairs it. It also notices a display that should have a
@@ -19,11 +20,11 @@ use windows::Win32::Foundation::{HWND, RECT};
 use windows::Win32::Graphics::Gdi::GetWindowRgnBox;
 use windows::Win32::UI::HiDpi::GetDpiForWindow;
 use windows::Win32::UI::WindowsAndMessaging::{
-    GetForegroundWindow, GetWindow, GetWindowLongPtrW, GetWindowRect, GetWindowThreadProcessId, IsIconic, IsWindow,
+    GetForegroundWindow, GetWindow, GetWindowLongPtrW, GetWindowRect, IsIconic, IsWindow,
     IsWindowVisible, GWL_EXSTYLE, GW_HWNDPREV, WS_EX_TOPMOST,
 };
 
-use super::model::{Rect, Visibility, MAIN_LABEL};
+use super::model::{misplacement, planned_monitor, Rect, Visibility, MAIN_LABEL};
 use super::monitors::{self, MonitorInfo};
 use super::{multi, watch, window};
 
@@ -170,14 +171,6 @@ fn overlap(a: &Rect, b: &Rect) -> (i32, i32) {
     (w.max(0), h.max(0))
 }
 
-fn is_own(h: HWND) -> bool {
-    let mut pid: u32 = 0;
-    unsafe {
-        GetWindowThreadProcessId(h, Some(&mut pid as *mut u32));
-    }
-    pid == std::process::id()
-}
-
 /// The first visible window of another app above `h` in Z order that covers part of `strip`.
 fn window_above(h: HWND, strip: &Rect) -> Option<isize> {
     let mut cur = h;
@@ -186,7 +179,7 @@ fn window_above(h: HWND, strip: &Rect) -> Option<isize> {
             Ok(x) if !x.is_invalid() => x,
             _ => return None,
         };
-        if !unsafe { IsWindowVisible(cur) }.as_bool() || is_own(cur) || watch::is_cloaked(cur) {
+        if !unsafe { IsWindowVisible(cur) }.as_bool() || watch::is_ours(cur) || watch::is_cloaked(cur) {
             continue;
         }
         let mut r = RECT::default();
@@ -262,7 +255,7 @@ fn check(reason: &'static str) {
         None => return,
     };
     let mons = monitors::all();
-    check_plan(&mons);
+    let planned = check_plan(&mons);
     let front = unsafe { GetForegroundWindow() };
     let mut suppressed = false;
     for d in &docks {
@@ -272,7 +265,7 @@ fn check(reason: &'static str) {
             clear(&d.label);
             continue;
         }
-        check_dock(reason, d, &mons, front);
+        check_dock(reason, d, &mons, &planned, front);
     }
     if suppressed {
         // The full-screen window may have closed or moved while another screen had the focus
@@ -281,8 +274,8 @@ fn check(reason: &'static str) {
     }
 }
 
-/// Every display the plan gives a dock must have a dock window.
-fn check_plan(mons: &[MonitorInfo]) {
+/// Every display the plan gives a dock must have a dock window. Returns the plan.
+fn check_plan(mons: &[MonitorInfo]) -> Vec<(String, String)> {
     let planned = window::current_plan(mons);
     let known = window::known_docks();
     let missing: Vec<String> = planned
@@ -293,11 +286,11 @@ fn check_plan(mons: &[MonitorInfo]) {
     if missing.is_empty() {
         MISSING_CHECKS.store(0, Ordering::SeqCst);
         clear("*plan");
-        return;
+        return planned;
     }
     // A window being created is not known yet: act on the second check in a row.
     if MISSING_CHECKS.fetch_add(1, Ordering::SeqCst) < 1 {
-        return;
+        return planned;
     }
     MISSING_CHECKS.store(0, Ordering::SeqCst);
     let text = missing.join(", ");
@@ -305,9 +298,10 @@ fn check_plan(mons: &[MonitorInfo]) {
         tracing::info!(missing = %text, monitors = mons.len(), "dock watchdog: a display has no dock window; creating it again");
     }
     multi::schedule_reconcile();
+    planned
 }
 
-fn check_dock(reason: &'static str, d: &window::GuardInfo, mons: &[MonitorInfo], front: HWND) {
+fn check_dock(reason: &'static str, d: &window::GuardInfo, mons: &[MonitorInfo], planned: &[(String, String)], front: HWND) {
     let h = hwnd_of(d.hwnd);
     let f = read_facts(h);
     let mut problems: Vec<String> = Vec::new();
@@ -317,6 +311,7 @@ fn check_dock(reason: &'static str, d: &window::GuardInfo, mons: &[MonitorInfo],
     let mut region = false;
     let mut reload = false;
     let mut reconcile = false;
+    let mut replan = false;
     let mut above: isize = 0;
     if !f.exists {
         problems.push("window destroyed".to_string());
@@ -356,6 +351,18 @@ fn check_dock(reason: &'static str, d: &window::GuardInfo, mons: &[MonitorInfo],
             problems.push("its monitor is gone".to_string());
             place = true;
             reconcile = true;
+        }
+        // Pushed off-screen, or left on another display than the plan gives it.
+        if let Some(actual) = f.rect {
+            let monitor = mons.iter().find(|m| m.id == d.monitor_id).map(|m| m.monitor);
+            if let Some(what) = misplacement(actual, monitor, &d.monitor_id, planned_monitor(planned, &d.label)) {
+                if what.starts_with("off") {
+                    place = true;
+                } else {
+                    replan = true;
+                }
+                problems.push(what);
+            }
         }
         if let Some(strip) = d.strip {
             let local = strip.offset(-d.window.left, -d.window.top);
@@ -429,17 +436,21 @@ fn check_dock(reason: &'static str, d: &window::GuardInfo, mons: &[MonitorInfo],
     if !f.exists {
         return;
     }
+    if replan {
+        // Assign every dock its planned monitor again and place them all (this one included).
+        window::apply_all();
+    }
     // Placing uses SetWindowPos(HWND_TOPMOST) and re-applies the region; showing also does both.
-    if place {
+    if place && !replan {
         window::guard_place(&d.label);
     }
     if show {
         window::guard_show(&d.label);
     }
-    if topmost && !place && !show {
+    if topmost && !place && !show && !replan {
         window::guard_topmost(&d.label);
     }
-    if region && !place && !show {
+    if region && !place && !show && !replan {
         window::guard_region(&d.label);
     }
     if reload {

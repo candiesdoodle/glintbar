@@ -94,7 +94,7 @@ mockService("shell", {
     (hotkeys ?? []).map((h) => ({ id: h.id, keys: h.keys, ok: true, error: null })),
   get_state: () => ({
     geometry: geo,
-    docks: [{ label: "main", monitor: MONITORS[0].id, visibility, appBar: false, regionOk: true }],
+    docks: [{ label: "main", hwnd: 0, monitor: MONITORS[0].id, visibility, appBar: false, regionOk: true }],
     monitors: MONITORS,
     taskbarHidden: false,
   }),

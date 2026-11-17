@@ -4,7 +4,7 @@
  *   ?card=system.cpu (opens the first tile of that widget)  ?reset=1 (forget saved state)
  *   ?menu=1 (the dock's right-click menu)  ?menu=card (right-click inside the open card)
  *   ?autohide=1  ?width=220 (a narrowed pill)  ?full=1 (full width)  ?more=8 (add 8 more widgets)
- *   ?align=center|right (full-width alignment)  ?magnify=1.8 (magnification on at that size)
+ *   ?align=center|right|fill (full-width alignment)  ?magnify=1.8 (magnification on at that size)
  *   ?dock=system.cpu,clocks.clock (exactly these widgets)  ?card= also adds the widget if missing
  *   ?welcome=1 / ?welcome=0 (show / skip the first-run hint)  ?keys=1 (keyboard navigation, as Win+Alt+T)
  */
@@ -47,7 +47,7 @@ export async function applyDevParams(): Promise<void> {
   if (width) dockActions.update({ barWidth: width, fullWidth: false });
   if (p.get("full") === "1") dockActions.update({ fullWidth: true });
   const align = p.get("align");
-  if (align === "left" || align === "center" || align === "right") updateDockPrefs({ fullWidthAlign: align });
+  if (align === "left" || align === "center" || align === "right" || align === "fill") updateDockPrefs({ fullWidthAlign: align });
   const magnify = Number(p.get("magnify"));
   if (magnify) updateDockPrefs({ magnification: true, magnifyScale: Math.max(1.2, Math.min(2, magnify)) });
   if (p.get("keys") === "1") setTimeout(startKeyboardNav, 400);

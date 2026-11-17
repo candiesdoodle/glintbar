@@ -130,6 +130,10 @@ impl Rect {
     pub fn offset(&self, dx: i32, dy: i32) -> Rect {
         Rect { left: self.left + dx, top: self.top + dy, right: self.right + dx, bottom: self.bottom + dy }
     }
+    /// True when the two rectangles share at least one pixel.
+    pub fn intersects(&self, other: &Rect) -> bool {
+        self.left < other.right && other.left < self.right && self.top < other.bottom && other.top < self.bottom
+    }
 }
 
 /// A strip `thickness` px tall on `edge` of `base`.
@@ -295,6 +299,27 @@ pub fn plan(monitors: &[PlanMonitor], displays: Displays, chosen: &str, follow: 
     out
 }
 
+/// The monitor the plan puts `label` on (None when the plan has no such dock window).
+pub fn planned_monitor<'a>(planned: &'a [(String, String)], label: &str) -> Option<&'a str> {
+    planned.iter().find(|(l, _)| l == label).map(|(_, m)| m.as_str())
+}
+
+/// What is wrong with where a dock window is, for the watchdog: its window does not touch its
+/// monitor (moved off-screen), or it sits on another monitor than the plan gives it.
+/// `window` is the rect Windows reports, `monitor` the rect of the monitor the dock thinks it
+/// is on (None when that monitor is gone, which the watchdog reports on its own).
+pub fn misplacement(window: Rect, monitor: Option<Rect>, monitor_id: &str, planned: Option<&str>) -> Option<String> {
+    if let Some(p) = planned {
+        if !p.is_empty() && p != monitor_id {
+            return Some(format!("on monitor {monitor_id} but planned for {p}"));
+        }
+    }
+    match monitor {
+        Some(m) if !window.intersects(&m) => Some("off its monitor".to_string()),
+        _ => None,
+    }
+}
+
 pub const MOD_ALT: u32 = 0x1;
 pub const MOD_CONTROL: u32 = 0x2;
 pub const MOD_SHIFT: u32 = 0x4;
@@ -371,6 +396,27 @@ mod tests {
         assert_eq!(all.len(), 2);
         assert_eq!(all[1], ("dock-b".to_string(), "B".to_string()));
         assert!(plan(&[], Displays::All, "", "").is_empty());
+    }
+
+    #[test]
+    fn finds_misplaced_docks() {
+        let left = Rect::new(0, 0, 1920, 1080);
+        let right = Rect::new(1920, 0, 4480, 1440);
+        let on_right = Rect::new(1920, 1376, 4480, 1440);
+        assert!(on_right.intersects(&right));
+        assert!(!on_right.intersects(&left));
+        // Touching edges share no pixel.
+        assert!(!Rect::new(0, 0, 10, 10).intersects(&Rect::new(10, 0, 20, 10)));
+
+        let planned = vec![("main".to_string(), "A".to_string()), ("dock-b".to_string(), "B".to_string())];
+        assert_eq!(planned_monitor(&planned, "dock-b"), Some("B"));
+        assert_eq!(planned_monitor(&planned, "dock-c"), None);
+
+        assert_eq!(misplacement(on_right, Some(right), "B", Some("B")), None);
+        assert_eq!(misplacement(on_right, Some(left), "A", Some("A")), Some("off its monitor".to_string()));
+        assert_eq!(misplacement(on_right, Some(right), "A", Some("B")), Some("on monitor A but planned for B".to_string()));
+        // Not in the plan (being closed) or its monitor is gone: only what can be checked.
+        assert_eq!(misplacement(on_right, None, "B", None), None);
     }
 
     #[test]

@@ -25,8 +25,8 @@ use windows::Win32::UI::Shell::{
     DefSubclassProc, RemoveWindowSubclass, SetWindowSubclass, ABN_FULLSCREENAPP, ABN_POSCHANGED, ABN_STATECHANGE,
 };
 use windows::Win32::UI::WindowsAndMessaging::{
-    GetCursorPos, GetSystemMetrics, GetWindowDisplayAffinity, GetWindowLongPtrW, GetWindowRect, IsWindowVisible,
-    RegisterWindowMessageW, SetWindowDisplayAffinity, SetWindowLongPtrW, SetWindowPos, ShowWindow, GWL_EXSTYLE, HWND_TOPMOST, PBT_APMRESUMEAUTOMATIC, PBT_APMRESUMESUSPEND, SM_SWAPBUTTON,
+    GetCursorPos, GetForegroundWindow, GetSystemMetrics, GetWindowDisplayAffinity, GetWindowLongPtrW, GetWindowRect,
+    IsWindowVisible, RegisterWindowMessageW, SetForegroundWindow, SetWindowDisplayAffinity, SetWindowLongPtrW, SetWindowPos, ShowWindow, GWL_EXSTYLE, HWND_TOPMOST, PBT_APMRESUMEAUTOMATIC, PBT_APMRESUMESUSPEND, SM_SWAPBUTTON,
     SPI_SETWORKAREA, STYLESTRUCT, SWP_FRAMECHANGED, SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE, SWP_NOZORDER, SW_HIDE,
     SW_SHOWNOACTIVATE, WDA_NONE, WM_ACTIVATE, WM_DISPLAYCHANGE, WM_DPICHANGED, WM_ENDSESSION, WM_HOTKEY, WM_NCDESTROY,
     WM_POWERBROADCAST, WM_SETTINGCHANGE, WM_STYLECHANGING, WM_WINDOWPOSCHANGED, WS_EX_APPWINDOW, WS_EX_TOOLWINDOW,
@@ -151,6 +151,8 @@ struct State {
 #[serde(rename_all = "camelCase")]
 pub struct DockSnapshot {
     label: String,
+    /// The window handle (the smoke harness checks each dock window natively).
+    hwnd: i64,
     monitor: String,
     strip: Option<Rect>,
     window: Rect,
@@ -495,21 +497,20 @@ pub(super) fn attach(window: &WebviewWindow) {
 
 /// Removes a dock from the state (its window is about to be destroyed). Main thread.
 pub(super) fn forget(label: &str) {
-    let raw = {
+    let (raw, monitor) = {
         let mut s = state();
         let pos = s.docks.iter().position(|d| d.label == label);
         match pos {
             Some(i) => {
                 let d = s.docks.remove(i);
-                if d.appbar {
-                    d.hwnd
-                } else {
-                    0
-                }
+                (if d.appbar { d.hwnd } else { 0 }, Some(d.monitor_id))
             }
-            None => 0,
+            None => (0, None),
         }
     };
+    if let Some(monitor) = monitor {
+        tracing::info!(%label, %monitor, "dock window dropped from the dock list (its window is closing or gone)");
+    }
     if raw != 0 {
         unsafe { appbar::unregister(hwnd_of(raw)) };
     }
@@ -694,6 +695,7 @@ pub fn snapshot() -> Snapshot {
             .iter()
             .map(|d| DockSnapshot {
                 label: d.label.clone(),
+                hwnd: d.hwnd as i64,
                 monitor: d.monitor_id.clone(),
                 strip: d.strip,
                 window: d.window,
@@ -769,6 +771,9 @@ pub(super) fn apply_all() {
         for d in s.docks.iter_mut() {
             if let Some((_, id)) = planned.iter().find(|(l, _)| *l == d.label) {
                 if let Some(m) = mons.iter().find(|m| m.id == *id) {
+                    if !d.monitor_id.is_empty() && d.monitor_id != m.id {
+                        tracing::info!(label = %d.label, from = %d.monitor_id, to = %m.id, "dock moves to another monitor (display plan changed)");
+                    }
                     d.set_monitor(m);
                 }
             }
@@ -805,12 +810,26 @@ fn relayout(label: &str) {
         return;
     }
     let h = hwnd_of(raw);
-    let mon = match monitors::by_id(&monitor_id).or_else(monitors::primary) {
+    let mon = match monitors::by_id(&monitor_id) {
         Some(m) => m,
-        None => {
-            tracing::warn!("no monitor found for the dock");
+        None if label != MAIN_LABEL && !monitor_id.is_empty() => {
+            // An extra dock belongs to its own display. Never move it onto the primary one (it would
+            // sit on top of the main dock and look gone); the reconcile closes it if the display is.
+            tracing::info!(%label, monitor = %monitor_id, "the dock's monitor is not reported right now; leaving its window where it is");
             return;
         }
+        None => match monitors::primary() {
+            Some(m) => {
+                if !monitor_id.is_empty() {
+                    tracing::info!(%label, missing = %monitor_id, primary = %m.id, "the dock's monitor is not reported; placing the dock on the primary monitor");
+                }
+                m
+            }
+            None => {
+                tracing::warn!("no monitor found for the dock");
+                return;
+            }
+        },
     };
     let scale = mon.scale();
     let thickness = ((geo.thickness * scale).round() as i32).clamp(8, mon.monitor.height().max(8));
@@ -996,10 +1015,75 @@ fn show_dock(label: &str) {
     if raw == 0 || vis == Visibility::Suppressed {
         return;
     }
+    sync_toolkit_visible(label, raw);
     unsafe {
         let _ = ShowWindow(hwnd_of(raw), SW_SHOWNOACTIVATE);
     }
     set_topmost(hwnd_of(raw));
+}
+
+/// Tells the window toolkit (tao) that a dock window is shown. The extra docks ("dock-...") are
+/// created hidden and shown with ShowWindow, which the toolkit never sees: it keeps them marked
+/// hidden, and its next style change - `set_focusable` when a text field, a dropdown or keyboard
+/// navigation takes the keyboard - then hides the window (SW_HIDE). That made the dock on a
+/// second display vanish around its menu and Settings. A no-op once the toolkit knows (always
+/// for "main", shown through the toolkit at start). Call with STATE unlocked. Main thread.
+fn sync_toolkit_visible(label: &str, raw: isize) {
+    let w = match APP.get().and_then(|app| app.get_webview_window(label)) {
+        Some(w) => w,
+        None => return,
+    };
+    let h = hwnd_of(raw);
+    let before = unsafe { GetForegroundWindow() };
+    if let Err(e) = w.show() {
+        tracing::warn!(%label, "could not mark the dock window as shown: {e}");
+        return;
+    }
+    // The toolkit shows a window with SW_SHOW, which may activate it: give the foreground back.
+    let after = unsafe { GetForegroundWindow() };
+    if after == h && before != h && !before.is_invalid() {
+        let ok = unsafe { SetForegroundWindow(before) }.as_bool();
+        tracing::info!(%label, ok, "the dock window took the foreground when shown; handed it back");
+    }
+}
+
+/// After `set_focusable`: the toolkit rewrites the window's styles and may show or hide it on
+/// its own. Puts the dock back the way GlintBar wants it (hidden only under a full-screen app on
+/// its screen, otherwise shown and topmost) and logs when the toolkit had changed that.
+/// Main thread.
+pub(super) fn after_focus_change(label: &str) {
+    let (raw, vis, shown, monitor) = {
+        let s = state();
+        match s.docks.iter().find(|d| d.label == label && !d.closing) {
+            Some(d) => (d.hwnd, d.visibility, d.shown, d.monitor_id.clone()),
+            None => return,
+        }
+    };
+    if raw == 0 {
+        return;
+    }
+    let h = hwnd_of(raw);
+    let visible = unsafe { IsWindowVisible(h) }.as_bool();
+    if vis == Visibility::Suppressed {
+        if visible {
+            tracing::info!(%label, %monitor, reason = "focus change while a full-screen app covers its screen", "hiding the dock window again");
+            unsafe {
+                let _ = ShowWindow(h, SW_HIDE);
+            }
+        }
+        return;
+    }
+    if !shown {
+        return;
+    }
+    if !visible {
+        tracing::info!(%label, %monitor, reason = "a focus change hid it", "showing the dock window again");
+        sync_toolkit_visible(label, raw);
+        unsafe {
+            let _ = ShowWindow(h, SW_SHOWNOACTIVATE);
+        }
+    }
+    set_topmost(h);
 }
 
 /// Keeps the dock out of Alt+Tab. Re-applied by WM_STYLECHANGING whenever tao rewrites styles.
@@ -1082,6 +1166,7 @@ pub(super) fn guard_show(label: &str) {
             None => return,
         }
     };
+    sync_toolkit_visible(label, raw);
     unsafe {
         let _ = ShowWindow(hwnd_of(raw), SW_SHOWNOACTIVATE);
     }
@@ -1219,10 +1304,12 @@ fn apply_visibility(label: &str, vis: Visibility) {
     };
     let h = hwnd_of(raw);
     let event = VisibilityEvent { label: label.to_string(), state: vis };
+    let monitor = state().docks.iter().find(|d| d.label == label).map(|d| d.monitor_id.clone()).unwrap_or_default();
     match vis {
         Visibility::Shown => {
             if prev == Visibility::Suppressed {
-                tracing::info!(%label, "full-screen app gone: showing the dock");
+                tracing::info!(%label, %monitor, "full-screen app gone: showing the dock");
+                sync_toolkit_visible(label, raw);
                 unsafe {
                     let _ = ShowWindow(h, SW_SHOWNOACTIVATE);
                 }
@@ -1232,7 +1319,9 @@ fn apply_visibility(label: &str, vis: Visibility) {
             emit("visibility", event.clone());
         }
         Visibility::Autohidden => {
+            tracing::info!(%label, %monitor, reason = "auto-hide (pointer away, nothing open)", "dock slides away to its edge sliver");
             if prev == Visibility::Suppressed {
+                sync_toolkit_visible(label, raw);
                 unsafe {
                     let _ = ShowWindow(h, SW_SHOWNOACTIVATE);
                 }
@@ -1248,7 +1337,7 @@ fn apply_visibility(label: &str, vis: Visibility) {
         }
         Visibility::Suppressed => {
             let over = state().docks.iter().find(|d| d.label == label).map(|d| d.fullscreen_hwnd).unwrap_or(0);
-            tracing::info!(%label, over = %watch::describe_window(over), "full-screen app in front: hiding the dock");
+            tracing::info!(%label, %monitor, over = %watch::describe_window(over), "full-screen app in front: hiding the dock");
             emit("visibility", event.clone());
             unsafe {
                 let _ = ShowWindow(h, SW_HIDE);
@@ -1500,6 +1589,7 @@ fn ensure_follow_poller() {
                     s.geo.monitor = mon.id.clone();
                     s.geo.clone()
                 };
+                tracing::info!(from = %current, to = %mon.id, reason = "pointer rested at the dock edge of that screen", "dock follows the pointer");
                 persist(&geo);
                 emit("placement", PlacementEvent { edge: geo.edge, monitor: geo.monitor.clone(), at: now_ms() });
                 on_main(apply_all);

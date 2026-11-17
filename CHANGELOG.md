@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.3
+
+- Fixed: with a dock on each display, the dock on a second display could disappear after its
+  right-click menu, Settings or the widget search was used. It now stays visible, and the log
+  records every time a dock window is hidden, moved or re-created, with the reason.
+- Settings > Dock > Align widgets has a new choice, Fill: on a full-width dock the widgets stretch so
+  together they span the whole bar, with each one's content kept at its usual size in its middle.
+
 ## 0.1.2
 
 First public release.

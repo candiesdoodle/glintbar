@@ -124,10 +124,21 @@ export function rowWidth(ids: string[], rects: Map<string, SlotRect>, spacing: n
   return widths.reduce((s, w) => s + w, 0) + Math.max(0, widths.length - 1) * spacing;
 }
 
-/** How much of the free space sits before the tiles: 0 left (or overflowing), 0.5 centre, 1 right. */
-export function alignFactor(align: "left" | "center" | "right", overflowing: boolean): number {
+/**
+ * How much of the free space sits before the tiles: 0 left (or overflowing), 0.5 centre, 1 right.
+ * Fill has no free space; a tile lifted off it closes the gap towards the centre, like centre.
+ */
+export function alignFactor(align: "left" | "center" | "right" | "fill", overflowing: boolean): number {
   if (overflowing) return 0;
-  return align === "center" ? 0.5 : align === "right" ? 1 : 0;
+  return align === "center" || align === "fill" ? 0.5 : align === "right" ? 1 : 0;
+}
+
+/**
+ * Fill: how far a stretched tile's content moves in from each side so it keeps its natural width,
+ * centred. Whole px, rounded down, so the content never ends up narrower than it was drawn for.
+ */
+export function fillInset(actual: number, natural: number): number {
+  return Math.max(0, Math.floor((actual - natural) / 2));
 }
 
 /**

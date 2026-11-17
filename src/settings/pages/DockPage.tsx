@@ -1,6 +1,6 @@
 import { dockActions, SIZE_PRESETS, SIZE_RANGE, useDock, type SizePreset } from "../../dock/layout";
 import { Segmented, Toggle } from "../../ui/controls";
-import { updateDockPrefs, useDockPrefs, type DockAlign, type TaskbarMode } from "../keys";
+import { dockAlign, updateDockPrefs, useDockPrefs, type DockAlign, type TaskbarMode } from "../keys";
 import { Group, RangeRow, Row } from "../parts";
 
 /** px -> the preset it matches, or "custom". */
@@ -67,14 +67,15 @@ export function DockPage() {
         {d.fullWidth && (
           <Row
             label="Align widgets"
-            info="Choose where widgets line up on a full-width dock. If there are too many to fit, they begin at the left and you can scroll."
+            info="Choose where widgets line up on a full-width dock. Fill: widgets stretch to span the whole bar (Apps keeps its width). If there are too many to fit, they begin at the left and you can scroll."
           >
             <Segmented
-              value={p.fullWidthAlign}
+              value={dockAlign(p.fullWidthAlign)}
               options={[
                 { value: "left" as DockAlign, label: "Left" },
                 { value: "center" as DockAlign, label: "Center" },
                 { value: "right" as DockAlign, label: "Right" },
+                { value: "fill" as DockAlign, label: "Fill" },
               ]}
               onChange={(v) => updateDockPrefs({ fullWidthAlign: v })}
             />

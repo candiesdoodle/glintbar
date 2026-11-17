@@ -1586,6 +1586,78 @@ function Format-LogLines($Lines) {
     if (@($Lines).Count -eq 0) { return 'none' }
     return (@($Lines) -join ' / ')
 }
+
+# Every dock window Rust knows (shell.get_state lists each with its handle): one that is not
+# hidden under a full-screen app must be visible and topmost. Returns the problems and a summary.
+function Get-DockWindowProblems([string]$When) {
+    $st = Send-Command -Action 'shellState'
+    $bad = @()
+    $desc = @()
+    foreach ($d in @($st.rust.docks)) {
+        if ($null -eq $d) { continue }
+        $h = [long]$d.hwnd
+        $vis = [string]$d.visibility
+        $exists = [GlintBarSmoke.Win]::Exists($h)
+        $visible = $exists -and [GlintBarSmoke.Win]::Visible($h)
+        $top = $exists -and [GlintBarSmoke.Guard]::IsTopmost($h)
+        $desc += "$($d.label) ($vis): visible $visible, topmost $top"
+        if ($vis -eq 'suppressed') { continue }
+        if (-not $visible) { $bad += "$When - $($d.label) is not visible" }
+        if (-not $top) { $bad += "$When - $($d.label) is not topmost" }
+    }
+    if ($desc.Count -eq 0) { $bad += "$When - shell.get_state listed no dock windows" }
+    return [ordered]@{ bad = $bad; text = "$When [$($desc -join ', ')]" }
+}
+
+# The dock window must stay shown and topmost while its menu and Settings open, take the keyboard
+# and close (a dock on a second display used to vanish there). The watchdog would put it back
+# within seconds, so this looks right after each action and also fails on a watchdog repair.
+Invoke-Step 'dock windows stay shown and topmost through the menu and Settings' -Check 'docks-up' {
+    Assert-Extra
+    if (-not $script:GuardOk) { throw 'the watchdog helpers are unavailable (see the HARNESS lines in drive.log)' }
+    [void](Send-Command -Action 'closeAll')
+    Start-Sleep -Milliseconds 400
+    $mark = Get-LogMark 'dock watchdog'
+    $bad = @()
+    $ev = @()
+    $l = Get-Layout
+    if ($null -eq $l.barFreePoint) { throw 'no empty spot on the bar' }
+    Invoke-Click $l.barFreePoint.x $l.barFreePoint.y -Right
+    Start-Sleep -Milliseconds 800
+    $r = Get-DockWindowProblems 'menu open'
+    $bad += $r.bad
+    $ev += $r.text
+    $l = Get-Layout
+    $item = @($l.menuItems | Where-Object { $_.label -like 'Settings*' })[0]
+    if ($null -eq $item) { throw "no Settings item in the menu :: $($ev -join '; ')" }
+    Invoke-Click $item.x $item.y
+    Start-Sleep -Milliseconds 1500
+    $r = Get-DockWindowProblems 'Settings open'
+    $bad += $r.bad
+    $ev += $r.text
+    $l = Get-Layout
+    $field = @($l.inputs | Where-Object { $_.panel -eq 'panel' })[0]
+    if ($null -ne $field) {
+        # A text field takes the keyboard: shell.set_focusable(true), then false on closing.
+        Invoke-Click $field.x $field.y
+        Start-Sleep -Milliseconds 800
+        $r = Get-DockWindowProblems 'Settings text field focused'
+        $bad += $r.bad
+        $ev += $r.text
+    }
+    $p = Get-DesktopPoint $l
+    Invoke-Click $p[0] $p[1]
+    Start-Sleep -Milliseconds 1200
+    $r = Get-DockWindowProblems 'after closing'
+    $bad += $r.bad
+    $ev += $r.text
+    $repairs = @(Get-NewLogLines 'dock watchdog' $mark | Where-Object { $_ -match 'hidden|not topmost' })
+    if ($repairs.Count -gt 0) { $bad += "the watchdog had to repair a dock: $(Format-LogLines $repairs)" }
+    [void](Send-Command -Action 'closeAll')
+    if ($bad.Count -gt 0) { throw "$($bad -join '; ') :: $($ev -join '; ')" }
+    $ev -join '; '
+}
+
 Invoke-Step 'typing: picker search box (real clicks + SendInput Unicode keys)' -Check 'typing-picker' {
     Assert-Extra
     [void](Send-Command -Action 'restoreDock')
@@ -2466,6 +2538,45 @@ Invoke-Step 'full width: widgets at the left, in the centre and at the right' -C
         Start-Sleep -Milliseconds 800
     }
     $ev = $rows -join ' | '
+    if ($bad.Count -gt 0) { throw "$($bad -join '; ') :: $ev" }
+    $ev
+}
+
+# 14. Fill on a full-width dock in the Clear theme: the tiles stretch from one end of the bar to the
+#     other, with nothing transparent left at the ends. A short dock, so the row doesn't overflow.
+Invoke-Step 'full width, Clear theme: Fill stretches a short row of widgets across the whole bar' -Check 'align-fill' {
+    [void](Send-Command -Action 'closeAll')
+    $before = Get-Layout
+    $prefs = Send-Command -Action 'setDockPrefs' -CmdArgs @{}
+    $bad = @()
+    $ev = ''
+    try {
+        [void](Send-Command -Action 'setTheme' -CmdArgs @{ theme = 'clear' })
+        [void](Send-Command -Action 'setDock' -CmdArgs @{ widgetIds = @('apps.apps', 'system.cpu', 'system.ram', 'clocks.clock') } -TimeoutSec 30)
+        $set = Send-Command -Action 'setAlign' -CmdArgs @{ fullWidth = $true; align = 'fill' }
+        Start-Sleep -Milliseconds 3500
+        $l = Get-Layout
+        Save-Shot 'align-fill-clear'
+        $tiles = @($l.tiles)
+        if ($null -eq $l.bar -or $tiles.Count -eq 0) { throw 'no bar or no tiles' }
+        $first = $tiles[0]
+        $last = $tiles[$tiles.Count - 1]
+        $leftGap = [int]$first.rect.x - [int]$l.bar.x
+        $rightGap = ([int]$l.bar.x + [int]$l.bar.width) - ([int]$last.rect.x + [int]$last.rect.width)
+        $ev = "theme $($l.theme), applied $($set.applied), overflowing $($set.overflowing), bar $($l.bar.width) px, $($tiles.Count) tiles, gaps $leftGap / $rightGap px"
+        if ($set.applied -ne 'fill') { $bad += "the dock shows alignment $($set.applied), not fill" }
+        if (-not $set.overflowing) {
+            if ($leftGap -gt 40) { $bad += "the first tile is $leftGap px from the start of the bar" }
+            if ($rightGap -gt 40) { $bad += "the last tile ends $rightGap px before the end of the bar" }
+        }
+    } finally {
+        [void](Send-Command -Action 'restoreDock')
+        $alignBefore = if ($prefs -and $prefs.fullWidthAlign) { "$($prefs.fullWidthAlign)" } else { 'left' }
+        $themeBefore = if ($before -and $before.theme) { "$($before.theme)" } else { 'midnight' }
+        [void](Send-Command -Action 'setAlign' -CmdArgs @{ fullWidth = [bool]$before.fullWidth; align = $alignBefore })
+        [void](Send-Command -Action 'setTheme' -CmdArgs @{ theme = $themeBefore })
+        Start-Sleep -Milliseconds 1500
+    }
     if ($bad.Count -gt 0) { throw "$($bad -join '; ') :: $ev" }
     $ev
 }

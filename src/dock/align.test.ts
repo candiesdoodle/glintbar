@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { grownRect, toHitRect } from "./hitRegion";
-import { alignFactor, rowWidth, slotOffsets, type SlotRect } from "./layout";
+import { alignFactor, fillInset, rowWidth, slotOffsets, type SlotRect } from "./layout";
+import { dockAlign } from "../settings/keys";
 
 const rects = new Map<string, SlotRect>([
   ["a", { left: 100, width: 50 }],
@@ -15,6 +16,25 @@ describe("full-width alignment", () => {
     expect(alignFactor("left", false)).toBe(0);
     expect(alignFactor("center", true)).toBe(0);
     expect(alignFactor("right", true)).toBe(0);
+    // Fill has no spare space; a tile lifted off it closes the gap towards the centre.
+    expect(alignFactor("fill", false)).toBe(0.5);
+    expect(alignFactor("fill", true)).toBe(0);
+  });
+
+  it("keeps a stretched tile's content at its natural width, centred", () => {
+    expect(fillInset(150, 100)).toBe(25);
+    // Whole px, rounded down: the content is never squeezed.
+    expect(fillInset(151, 100)).toBe(25);
+    expect(fillInset(100, 100)).toBe(0);
+    // Narrower than natural (removing, or not laid out yet): no inset.
+    expect(fillInset(60, 100)).toBe(0);
+  });
+
+  it("reads saved alignments safely", () => {
+    expect(dockAlign("fill")).toBe("fill");
+    expect(dockAlign("center")).toBe("center");
+    expect(dockAlign("justify")).toBe("left");
+    expect(dockAlign(undefined)).toBe("left");
   });
 
   it("measures a row", () => {

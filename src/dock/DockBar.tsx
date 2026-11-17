@@ -15,12 +15,13 @@ import { needsConnection, useIsSample } from "../core/connections";
 import { getWidget, isKnownWidget, useWidget } from "../core/registry";
 import { useInView } from "../core/useVisible";
 import { tileWidth, type WidgetDef } from "../core/widget";
-import { useDockPrefs, useGeneralPrefs, type DockAlign } from "../settings/keys";
+import { dockAlign, useDockPrefs, useGeneralPrefs, type DockAlign } from "../settings/keys";
 import { cx } from "../ui/cx";
 import { registerHit, setHitFull } from "./hitRegion";
 import {
   alignFactor,
   dockActions,
+  fillInset,
   minBarWidth,
   narrowedWidth,
   reorderFor,
@@ -52,7 +53,7 @@ export function DockStrip() {
   const fullWidth = useDock((s) => s.fullWidth);
   const barWidth = useDock((s) => s.barWidth);
   // Settings > Dock > Align widgets (full width only; a pill always fits its widgets).
-  const align = useDockPrefs((p) => p.fullWidthAlign);
+  const align = useDockPrefs((p) => dockAlign(p.fullWidthAlign));
   const rowAlign: DockAlign = fullWidth ? align : "left";
   const thickness = useDock(stripThickness);
   const visibility = useShell((s) => s.visibility);
@@ -395,6 +396,7 @@ function DockTiles({ height, spacing, scroller, align }: { height: number; spaci
             height={height}
             spacing={spacing}
             scroller={scroller}
+            fill={align === "fill"}
             dragging={drag?.id === inst.instanceId}
             lifted={drag?.id === inst.instanceId && drag.lifted}
             removing={Boolean(removing[inst.instanceId])}
@@ -430,6 +432,7 @@ function DockTile({
   height,
   spacing,
   scroller,
+  fill,
   dragging,
   lifted,
   removing,
@@ -446,6 +449,8 @@ function DockTile({
   height: number;
   spacing: number;
   scroller: RefObject<HTMLDivElement | null>;
+  /** Settings > Dock > Align widgets > Fill: the tile takes a share of the bar's spare width. */
+  fill: boolean;
   dragging: boolean;
   lifted: boolean;
   removing: boolean;
@@ -486,10 +491,29 @@ function DockTile({
 
   const fit = def?.fit === "content";
   const width = def ? tileWidth(def.size, height, spacing) : height;
+  // Fill: fixed-width tiles grow (the Apps tile keeps its width: its apps are separate cards and
+  // its magnification makes room for itself). The surface stretches; the content keeps its natural
+  // width, centred, by moving in from each side by `inset` (see dock.css).
+  const grow = fill && !fit && !removing;
+  const [inset, setInset] = useState(0);
+  useEffect(() => {
+    const el = elRef.current;
+    if (!grow || !el || typeof ResizeObserver === "undefined") {
+      setInset(0);
+      return;
+    }
+    const update = () => setInset(fillInset(el.offsetWidth, width));
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [grow, width, def]);
   const style: CSSProperties = {
     // A content-sized tile takes its content's width (it sets its own, see WidgetDef.fit).
     width: removing ? 0 : fit ? undefined : width,
     minWidth: fit && !removing ? height : undefined,
+    flexGrow: grow ? 1 : undefined,
+    ["--g-fill-inset" as string]: grow && inset > 0 ? `${inset}px` : undefined,
     height,
     marginRight: removing ? -spacing : undefined,
     transform: x || y ? `translate(${x}px, ${y}px)` : undefined,
@@ -527,6 +551,7 @@ function DockTile({
       data-glintbar-tile={inst.instanceId}
       tabIndex={tabIndex}
       aria-label={def.name}
+      data-glintbar-fill={grow && inset > 0 ? "" : undefined}
       className={cx("g-tile-key relative shrink-0 select-none", !dragging && "g-press", lifted && "g-tile-lifted", removing && "g-tile-out")}
       style={style}
       onPointerDown={(e) => onPointerDown(e, inst.instanceId)}

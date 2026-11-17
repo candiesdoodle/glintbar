@@ -90,7 +90,7 @@ async fn reconcile() {
         match create(&app, label, &mon).await {
             Ok(()) => {
                 created = true;
-                tracing::info!(%label, monitor = %monitor_id, "dock window created");
+                tracing::info!(%label, monitor = %monitor_id, reason = "this display has no dock window", "dock window created");
             }
             Err(e) => tracing::warn!(%label, "could not create a dock window: {e}"),
         }
@@ -101,6 +101,14 @@ async fn reconcile() {
         if label == MAIN_LABEL || closing || planned.iter().any(|(l, _)| *l == label) {
             continue;
         }
+        let ids: Vec<&str> = mons.iter().map(|m| m.id.as_str()).collect();
+        tracing::info!(
+            %label,
+            monitors = %ids.join(", "),
+            planned = planned.len(),
+            reason = "its display is not in the plan any more (display removed or Displays setting changed)",
+            "closing a dock window"
+        );
         close(&app, label);
     }
 

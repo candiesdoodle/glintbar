@@ -10,7 +10,7 @@ The dock holds your pinned and running apps together with widgets for media play
 
 - **110 widgets** across 13 categories. Pick the ones you want and arrange them in any order.
 - **Taskbar features.** Pinned and running apps, hover previews of windows, right-click jump lists, a Start button, tray icons, and space reserved so maximised windows don't cover the dock.
-- **Top or bottom, pill or full width.** Three preset sizes and a height slider, adjustable spacing and padding, left / centre / right alignment, auto-hide, and either a dock on each display or a single dock that moves between displays with the pointer.
+- **Top or bottom, pill or full width.** Three preset sizes and a height slider, adjustable spacing and padding, left / centre / right alignment or Fill (widgets stretch edge to edge), auto-hide, and either a dock on each display or a single dock that moves between displays with the pointer.
 - **Six themes**, two of them glass, and an accent colour of your choice.
 - **Magnification.** Icons under the pointer enlarge and extend past the top of the bar.
 - **Quiet.** The dock hides itself on any display where a full-screen game or video is running, and idles at well under 1 % CPU.

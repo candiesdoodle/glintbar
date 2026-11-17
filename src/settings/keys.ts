@@ -23,8 +23,13 @@ export type TemperatureUnit = "c" | "f";
 export type WidgetStyle = "black" | "white" | "frosted";
 export type IconSize = "s" | "m" | "l";
 export type Displays = "main" | "all" | "follow";
-/** Where the widgets sit on a full-width dock. */
-export type DockAlign = "left" | "center" | "right";
+/** Where the widgets sit on a full-width dock; "fill" stretches them across the whole bar. */
+export type DockAlign = "left" | "center" | "right" | "fill";
+export const DOCK_ALIGNS: readonly DockAlign[] = ["left", "center", "right", "fill"];
+/** A saved or imported value we don't know (an older or newer version wrote it): left. */
+export function dockAlign(v: unknown): DockAlign {
+  return DOCK_ALIGNS.includes(v as DockAlign) ? (v as DockAlign) : "left";
+}
 /** "hidden" = hide while GlintBar runs, "autohide" = switch Windows' own auto-hide on, "leave" = don't touch it. */
 export type TaskbarMode = "hidden" | "autohide" | "leave";
 /** Where the accent colour comes from. "custom" uses settings.accent. */
@@ -72,7 +77,7 @@ export interface DockPrefs {
   magnifyScale: number;
   /** Resting on an open app shows its windows. */
   windowPreviews: boolean;
-  /** Full width only: widgets at the left, centre or right (left when they overflow). */
+  /** Full width only: widgets at the left, centre or right, or stretched to fill the bar (left when they overflow). */
   fullWidthAlign: DockAlign;
 }
 

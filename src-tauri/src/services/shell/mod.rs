@@ -221,6 +221,10 @@ pub fn set_focusable(app: &AppHandle, label: &str, focusable: bool) -> SvcResult
     }
     #[cfg(windows)]
     {
+        // The toolkit applies the change by rewriting the window styles (queued on the main
+        // thread before this): check the dock is still shown and topmost afterwards.
+        let l = label.to_string();
+        window::on_main(move || window::after_focus_change(&l));
         if !focusable {
             focus::schedule_hand_back();
         }

@@ -94,7 +94,7 @@ export function setDockPrefs(args: unknown) {
   }
   if (patch.taskbarMode !== undefined && !["hidden", "autohide", "leave"].includes(patch.taskbarMode)) throw new Error("taskbarMode must be hidden, autohide or leave");
   if (patch.displays !== undefined && !["main", "all", "follow"].includes(patch.displays)) throw new Error("displays must be main, all or follow");
-  if (patch.fullWidthAlign !== undefined && !["left", "center", "right"].includes(patch.fullWidthAlign)) throw new Error("fullWidthAlign must be left, center or right");
+  if (patch.fullWidthAlign !== undefined && !["left", "center", "right", "fill"].includes(patch.fullWidthAlign)) throw new Error("fullWidthAlign must be left, center, right or fill");
   if (patch.magnifyScale !== undefined) patch.magnifyScale = Math.max(1.2, Math.min(2, Number(patch.magnifyScale) || 1.5));
   updateDockPrefs(patch);
   const p = useDockPrefs.getState();
@@ -104,7 +104,7 @@ export function setDockPrefs(args: unknown) {
 /** Full width on/off and where its widgets sit (Settings > Dock > Align widgets). */
 export async function setAlign(args: unknown) {
   const align = String(arg<string>(args, "align") ?? "left");
-  if (!["left", "center", "right"].includes(align)) throw new Error("align must be left, center or right");
+  if (!["left", "center", "right", "fill"].includes(align)) throw new Error("align must be left, center, right or fill");
   const fullWidth = arg<boolean>(args, "fullWidth");
   if (fullWidth !== undefined) dockActions.update({ fullWidth: Boolean(fullWidth), barWidth: 0 });
   updateDockPrefs({ fullWidthAlign: align as DockPrefs["fullWidthAlign"] });

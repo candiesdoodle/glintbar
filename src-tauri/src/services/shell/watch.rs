@@ -17,11 +17,11 @@ use windows::Win32::System::Threading::{OpenProcess, QueryFullProcessImageNameW,
 use windows::Win32::UI::Accessibility::{SetWinEventHook, HWINEVENTHOOK};
 use windows::Win32::UI::Shell::{SHQueryUserNotificationState, QUNS_BUSY, QUNS_PRESENTATION_MODE, QUNS_RUNNING_D3D_FULL_SCREEN};
 use windows::Win32::UI::WindowsAndMessaging::{
-    CallNextHookEx, GetClassNameW, GetForegroundWindow, GetWindowLongW, GetWindowRect, GetWindowThreadProcessId, IsIconic,
+    CallNextHookEx, GetAncestor, GetClassNameW, GetForegroundWindow, GetWindowLongW, GetWindowRect, GetWindowThreadProcessId, IsIconic,
     IsWindow, IsWindowVisible, IsZoomed, SetWindowsHookExW, UnhookWindowsHookEx, CHILDID_SELF, EVENT_OBJECT_LOCATIONCHANGE,
     EVENT_OBJECT_SHOW, EVENT_SYSTEM_FOREGROUND, GWL_STYLE, HHOOK, KBDLLHOOKSTRUCT, MSLLHOOKSTRUCT, OBJID_WINDOW, WH_KEYBOARD_LL,
     WH_MOUSE_LL, WINEVENT_OUTOFCONTEXT, WINEVENT_SKIPOWNPROCESS, WM_KEYDOWN, WM_LBUTTONDOWN, WM_MBUTTONDOWN, WM_RBUTTONDOWN,
-    WS_CAPTION,
+    WS_CAPTION, GA_ROOTOWNER,
 };
 
 use super::model::Rect;
@@ -180,15 +180,35 @@ fn exe_of(pid: u32) -> String {
     }
 }
 
-fn describe(hwnd: HWND) -> Front {
-    if hwnd.is_invalid() {
-        return Front { class: String::new(), exe: String::new(), own: false };
-    }
+fn pid_of(hwnd: HWND) -> u32 {
     let mut pid: u32 = 0;
     unsafe {
         GetWindowThreadProcessId(hwnd, Some(&mut pid as *mut u32));
     }
-    let own = pid == std::process::id();
+    pid
+}
+
+/// A window of GlintBar's own process, or one owned by a GlintBar window: the dropdowns, menus
+/// and file dialogs of a dock page belong to WebView2's processes but are owned by the dock
+/// window. None of them is ever a full-screen app, and none of them may hide or cover a dock.
+pub(super) fn is_ours(hwnd: HWND) -> bool {
+    if hwnd.is_invalid() {
+        return false;
+    }
+    let me = std::process::id();
+    if pid_of(hwnd) == me {
+        return true;
+    }
+    let root = unsafe { GetAncestor(hwnd, GA_ROOTOWNER) };
+    !root.is_invalid() && root != hwnd && pid_of(root) == me
+}
+
+fn describe(hwnd: HWND) -> Front {
+    if hwnd.is_invalid() {
+        return Front { class: String::new(), exe: String::new(), own: false };
+    }
+    let pid = pid_of(hwnd);
+    let own = pid == std::process::id() || is_ours(hwnd);
     Front { class: class_of(hwnd), exe: if own { String::new() } else { exe_of(pid) }, own }
 }
 
@@ -274,7 +294,8 @@ fn check_now() {
     CHECK_PENDING.store(false, Ordering::SeqCst);
     let front = unsafe { GetForegroundWindow() };
     let info = describe(front);
-    // Clicking the dock itself or taking a screenshot changes nothing.
+    // Clicking the dock itself (or a dropdown, menu or dialog of a dock page) or taking a
+    // screenshot changes nothing: none of our own windows is ever treated as full screen.
     if info.own || info.is_screenshot_tool() {
         return;
     }

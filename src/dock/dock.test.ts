@@ -71,7 +71,7 @@ describe("geometry sent to Rust", () => {
     expect(taskbarChoice(true, "autohide")).toBe("autohide");
   });
   it("includes displays and show-on-desktop from Settings > Dock", () => {
-    const g = geometryFor(DEFAULT_DOCK, { showOnDesktop: true, displays: "all", lockDock: false, taskbarMode: "hidden", magnification: false, magnifyScale: 1.5, fullWidthAlign: "left", windowPreviews: true });
+    const g = geometryFor(DEFAULT_DOCK, { showOnDesktop: true, displays: "all", lockDock: false, taskbarMode: "hidden", magnification: false, magnifyScale: 1.5, fullWidthAlign: "left", windowPreviews: true, highlightActive: false });
     expect(g).toMatchObject({ edge: "bottom", thickness: 64, displays: "all", showOnDesktop: true, taskbar: "hidden", hideTaskbar: true });
   });
 });

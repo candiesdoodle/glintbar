@@ -1,10 +1,10 @@
 import { Headphones, Volume2, VolumeX } from "lucide-react";
 import type { WheelEvent } from "react";
 import { defineWidget, type TileProps, lazyPart } from "../../../core/widget";
-import { clamp, TileFrame, TileNotice } from "../../../ui";
+import { clamp, cx, TileFrame, TileNotice } from "../../../ui";
 import { TileSampleBadge } from "../../../ui/TileSampleBadge";
 import { useAudio } from "../shared";
-import { deviceIcon, setVolume, useOptimistic, volumeIcon } from "../volume";
+import { deviceIcon, setMuted, setVolume, useOptimistic, volumeIcon } from "../volume";
 
 function OutputTile({ size, isSample }: TileProps) {
   const audio = useAudio(isSample);
@@ -30,10 +30,24 @@ function OutputTile({ size, isSample }: TileProps) {
 
   return (
     <div className="h-full w-full" onWheel={onWheel}>
-      <TileFrame className="gap-[calc(var(--tile-h)*0.16)]" title={out ? `${out.name}${out.detail ? ` (${out.detail})` : ""}: ${muted ? "muted" : `${vol}%`}. Use the scroll wheel to adjust.` : "Sound"}>
-        <div className={muted ? "grid shrink-0 place-items-center rounded-full bg-bad/15 text-bad" : "grid shrink-0 place-items-center rounded-full bg-accent/15 text-accent"} style={{ width: circle, height: circle }}>
+      <TileFrame className="gap-[calc(var(--tile-h)*0.16)]" title={out ? `${out.name}${out.detail ? ` (${out.detail})` : ""}: ${muted ? "muted" : `${vol}%`}. Scroll to adjust, click the icon to mute.` : "Sound"}>
+        {/* The icon is the mute switch; the rest of the tile opens the card. */}
+        <button
+          type="button"
+          disabled={!out}
+          aria-label={muted ? "Unmute" : "Mute"}
+          aria-pressed={muted}
+          title={muted ? "Unmute" : "Mute"}
+          className={cx("g-press grid shrink-0 place-items-center rounded-full", muted ? "bg-bad/15 text-bad hover:bg-bad/25" : "bg-accent/15 text-accent hover:bg-accent/25")}
+          style={{ width: circle, height: circle }}
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            e.stopPropagation();
+            if (out && !isSample) setMuted(!muted).catch((err) => console.warn("set_muted failed", err));
+          }}
+        >
           <Icon size={Math.round(circle * 0.5)} />
-        </div>
+        </button>
         <div className="min-w-0 flex-1 leading-none">
           <div className="font-semibold tabular-nums" style={{ fontSize: Math.round(size * 0.34) }}>
             {!out ? (audio === undefined ? "–" : "Off") : muted ? "Muted" : `${vol}%`}
@@ -55,7 +69,7 @@ export default defineWidget({
   id: "media.output",
   name: "Audio Output",
   category: "Media & Audio",
-  description: "Speaker or headphone volume; scroll over it to adjust.",
+  description: "Speaker or headphone volume; scroll over it to adjust, click its icon to mute.",
   keywords: ["volume", "sound", "speakers", "headphones", "mixer", "mute", "output", "device"],
   icon: Volume2,
   size: "m",

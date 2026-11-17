@@ -58,6 +58,7 @@ export function AppVisual({
   m,
   style,
   highlight,
+  showActive,
   className,
   css,
 }: {
@@ -66,18 +67,23 @@ export function AppVisual({
   m: Metrics;
   style: AppStyle;
   highlight?: boolean;
+  /** Give the app whose window is in front an accent-coloured background. */
+  showActive?: boolean;
   className?: string;
   css?: CSSProperties;
 }) {
   const running = !!app && app.windows.length > 0;
+  const lit = !!showActive && !!app?.active;
   const dotW = app?.active ? Math.round(m.height * 0.26) : Math.max(4, Math.round(m.height * 0.09));
   const dotH = Math.max(3, Math.round(m.height * 0.07));
   return (
     <div
       className={cx(
         "relative grid shrink-0 place-items-center",
-        style === "cards" && "rounded-tile border border-line bg-tile transition-colors duration-150 hover:bg-tile-hover",
-        style === "icons" && "rounded-[10px] hover:bg-hover",
+        style === "cards" && "rounded-tile border transition-colors duration-150",
+        style === "cards" && (lit ? "border-accent/60 bg-accent/25" : "border-line bg-tile hover:bg-tile-hover"),
+        style === "icons" && "rounded-[10px] transition-colors duration-150",
+        style === "icons" && (lit ? "bg-accent/25" : "hover:bg-hover"),
         app?.flashing && "glintbar-apps-flash",
         highlight && "ring-2 ring-accent",
         app?.hung && "opacity-60 grayscale",

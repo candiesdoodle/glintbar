@@ -77,6 +77,8 @@ export interface DockPrefs {
   magnifyScale: number;
   /** Resting on an open app shows its windows. */
   windowPreviews: boolean;
+  /** The app whose window is in front gets an accent-coloured background. */
+  highlightActive: boolean;
   /** Full width only: widgets at the left, centre or right, or stretched to fill the bar (left when they overflow). */
   fullWidthAlign: DockAlign;
 }
@@ -109,6 +111,7 @@ export const DEFAULT_DOCK_PREFS: DockPrefs = {
   magnification: false,
   magnifyScale: 1.5,
   windowPreviews: true,
+  highlightActive: false,
   fullWidthAlign: "left",
 };
 

@@ -84,6 +84,9 @@ export function AppsCard({ config: own, setConfig, isSample }: CardProps<AppsCon
         <SettingRow label="Window previews" description="Hover a running app for thumbnails of its windows.">
           <Toggle checked={config.previews} onChange={(windowPreviews) => updateDockPrefs({ windowPreviews })} label="Window previews" />
         </SettingRow>
+        <SettingRow label="Highlight the active app" description="The app in front gets a coloured background.">
+          <Toggle checked={config.highlightActive} onChange={(highlightActive) => updateDockPrefs({ highlightActive })} label="Highlight the active app" />
+        </SettingRow>
         <SettingRow label="Start button">
           <Toggle checked={config.showStart} onChange={(showStart) => setConfig({ showStart })} label="Start button" />
         </SettingRow>

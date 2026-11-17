@@ -124,6 +124,9 @@ export function DockPage() {
         <Row label="Window previews" info="Hover over a running app to get a preview of each of its windows.">
           <Toggle label="Window previews" checked={p.windowPreviews} onChange={(v) => updateDockPrefs({ windowPreviews: v })} />
         </Row>
+        <Row label="Highlight the active app" info="The app whose window is in front gets a coloured background on the dock.">
+          <Toggle label="Highlight the active app" checked={p.highlightActive} onChange={(v) => updateDockPrefs({ highlightActive: v })} />
+        </Row>
       </Group>
 
       <Group title="Windows taskbar" footer="No Windows files are modified. When GlintBar quits, your taskbar returns to its previous state.">

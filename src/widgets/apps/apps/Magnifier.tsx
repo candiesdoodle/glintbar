@@ -91,6 +91,7 @@ export function Magnifier({
   style,
   edge,
   label,
+  showActive,
   bind,
 }: {
   /** The Apps tile's instance id (the layer is found by it). */
@@ -102,6 +103,7 @@ export function Magnifier({
   style: AppStyle;
   edge: "top" | "bottom";
   label: boolean;
+  showActive: boolean;
   bind: (key: string) => ItemHandlers;
 }) {
   const boxes = magnifyLayout(items, x, max, m.slot, edge);
@@ -132,7 +134,7 @@ export function Magnifier({
             }}
             {...bind(it.key)}
           >
-            <AppVisual app={it.app} start={it.start} m={m} style={style} />
+            <AppVisual app={it.app} start={it.start} m={m} style={style} showActive={showActive} />
             {label && i === top && s > 1.15 && name && (
               <div
                 className="g-panel pointer-events-none absolute left-1/2 px-2 py-0.5 text-[11px] whitespace-nowrap text-fg"

@@ -484,7 +484,7 @@ export function AppsTile({ instanceId, config: own, setConfig, size, openCard, i
         }}
         {...itemHandlers(app, index)}
       >
-        <AppVisual app={app} m={m} style={config.style} highlight={isTarget} />
+        <AppVisual app={app} m={m} style={config.style} highlight={isTarget} showActive={config.highlightActive} />
       </div>
     );
   };
@@ -559,7 +559,7 @@ export function AppsTile({ instanceId, config: own, setConfig, size, openCard, i
       {isSample && <TileSampleBadge />}
 
       {magnifying && mag && (
-        <Magnifier owner={instanceId} items={mag.items} x={mag.x} max={config.magnifyScale} m={m} style={config.style} edge={edge} label={config.hoverNames} bind={bindMagnified} />
+        <Magnifier owner={instanceId} items={mag.items} x={mag.x} max={config.magnifyScale} m={m} style={config.style} edge={edge} label={config.hoverNames} showActive={config.highlightActive} bind={bindMagnified} />
       )}
       {labelText && labelEl && !popup && !drag?.started && hovered === labelFor && <HoverLabel anchor={anchorOf(labelEl)} text={labelText} />}
 

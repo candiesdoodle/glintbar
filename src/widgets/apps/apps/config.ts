@@ -33,6 +33,8 @@ export interface AppsLook {
   /** Largest magnified size, as a multiple (1.2 - 2). */
   magnifyScale: number;
   previews: boolean;
+  /** Mark the app whose window is in front with an accent-coloured background. */
+  highlightActive: boolean;
 }
 
 export type AppsView = AppsConfig & AppsLook;
@@ -47,9 +49,10 @@ export function useAppsLook(): AppsLook {
   const magnify = useDockPrefs((s) => s.magnification);
   const magnifyScale = useDockPrefs((s) => s.magnifyScale);
   const previews = useDockPrefs((s) => s.windowPreviews);
+  const highlightActive = useDockPrefs((s) => s.highlightActive);
   return useMemo(
-    () => ({ iconSize: ICON_SIZE[appIconSize] ?? "medium", style: appCards ? "cards" : "icons", hoverNames, magnify, magnifyScale, previews }),
-    [appIconSize, appCards, hoverNames, magnify, magnifyScale, previews],
+    () => ({ iconSize: ICON_SIZE[appIconSize] ?? "medium", style: appCards ? "cards" : "icons", hoverNames, magnify, magnifyScale, previews, highlightActive }),
+    [appIconSize, appCards, hoverNames, magnify, magnifyScale, previews, highlightActive],
   );
 }
 

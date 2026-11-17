@@ -32,6 +32,8 @@ const SHORTCUTS: Array<[string, string]> = [
   ["Scroll on the dock", "Scrolls to widgets that don't fit on screen"],
 ];
 
+const REPO_URL = "https://github.com/candiesdoodle/glintbar";
+
 const open = (target: string) => call("shell", "open", { target }).catch(() => {});
 
 export function AboutPage() {
@@ -46,6 +48,14 @@ export function AboutPage() {
         <p className="max-w-[340px] text-[12px] leading-snug text-dim">
           Live widgets on a Windows dock. GlintBar has no account, server or telemetry, and every widget connects directly to its own service.
         </p>
+        <div className="flex flex-wrap justify-center gap-2">
+          <Button size="sm" variant="ghost" icon={ExternalLink} onClick={() => open(REPO_URL)}>
+            github.com/candiesdoodle/glintbar
+          </Button>
+          <Button size="sm" variant="ghost" icon={ExternalLink} onClick={() => open(`${REPO_URL}/issues`)}>
+            Report a problem
+          </Button>
+        </div>
       </div>
       <Group title="Files" footer="These folders hold no keys or passwords. Those are stored in Windows Credential Manager.">
         <Row label="Settings and data" description={info.data?.dataDir}>

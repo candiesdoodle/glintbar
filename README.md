@@ -6,6 +6,8 @@
 
 The dock holds your pinned and running apps together with widgets for media playback, weather, upcoming calendar events, CPU, memory, network speed, quick toggles, clocks, timers and to-dos. Account widgets cover AI plan limits, revenue, analytics, GitHub, mail and follower counts. Clicking a widget opens a card with more detail and its options.
 
+<p align="center"><img src="docs/screenshots/demo.gif" alt="GlintBar in use: a magnified icon, the CPU, weather, calendar and quick-toggle cards, the widget picker, Settings and the six themes" width="100%"></p>
+
 ## Highlights
 
 - **110 widgets** across 13 categories. Pick the ones you want and arrange them in any order.

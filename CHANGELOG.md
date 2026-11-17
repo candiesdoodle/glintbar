@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.4
+
+- Settings > About links to the project page and to the issue list on GitHub.
+
 ## 0.1.3
 
 - Fixed: with a dock on each display, the dock on a second display could disappear after its

@@ -1,0 +1,32 @@
+name: Scoop manifest test
+
+# Manual only. Installs bucket/glintbar.json with Scoop on a Windows runner and checks the result.
+on:
+  workflow_dispatch:
+
+jobs:
+  scoop:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install with Scoop
+        shell: pwsh
+        run: |
+          Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser -Force
+          Invoke-RestMethod -Uri https://get.scoop.sh -OutFile install-scoop.ps1
+          ./install-scoop.ps1 -RunAsAdmin
+          $env:PATH = "$env:USERPROFILE\scoop\shims;$env:PATH"
+          scoop install "$env:GITHUB_WORKSPACE\bucket\glintbar.json"
+          $dir = "$env:USERPROFILE\scoop\apps\glintbar\current"
+          Get-ChildItem $dir | Format-Table Name, Length
+          if (-not (Test-Path "$dir\glintbar.exe")) { throw "glintbar.exe is missing after the install" }
+          if (Test-Path -LiteralPath "$dir\`$PLUGINSDIR") { throw "the installer's plugin folder was left behind" }
+          $v = (Get-Item "$dir\glintbar.exe").VersionInfo.ProductVersion
+          Write-Host "installed version: $v"
+          $want = (Get-Content "$env:GITHUB_WORKSPACE\bucket\glintbar.json" | ConvertFrom-Json).version
+          if ($v -notlike "$want*") { throw "version $v does not match the manifest ($want)" }
+          $lnk = "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Scoop Apps\GlintBar.lnk"
+          if (-not (Test-Path $lnk)) { throw "the Start menu shortcut is missing" }
+          scoop uninstall glintbar
+          if (Test-Path "$dir\glintbar.exe") { throw "glintbar.exe is still there after the uninstall" }

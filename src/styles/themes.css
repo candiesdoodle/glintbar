@@ -51,7 +51,7 @@
   --g-card: rgba(20, 22, 44, 0.95);
   --g-card-line: rgba(255, 255, 255, 0.1);
   --g-card-blur: blur(30px) saturate(150%);
-  --g-card-shadow: 0 24px 60px rgba(2, 3, 16, 0.55), 0 2px 8px rgba(0, 0, 0, 0.3);
+  --g-card-shadow: 0 10px 26px rgba(2, 3, 16, 0.55), 0 2px 8px rgba(0, 0, 0, 0.3);
   --g-card-highlight: rgba(255, 255, 255, 0.06);
   --g-menu: rgba(26, 28, 52, 0.97);
   --g-fg: #eef0ff;
@@ -88,7 +88,7 @@
   --g-card: #121214;
   --g-card-line: rgba(255, 255, 255, 0.09);
   --g-card-blur: none;
-  --g-card-shadow: 0 24px 60px rgba(0, 0, 0, 0.6), 0 2px 6px rgba(0, 0, 0, 0.4);
+  --g-card-shadow: 0 10px 26px rgba(0, 0, 0, 0.6), 0 2px 6px rgba(0, 0, 0, 0.4);
   --g-card-highlight: rgba(255, 255, 255, 0.05);
   --g-menu: #18181b;
   --g-fg: #f5f5f7;
@@ -125,7 +125,7 @@
   --g-card: #ffffff;
   --g-card-line: rgba(0, 0, 0, 0.09);
   --g-card-blur: none;
-  --g-card-shadow: 0 24px 60px rgba(16, 18, 40, 0.18), 0 2px 8px rgba(16, 18, 40, 0.08);
+  --g-card-shadow: 0 10px 26px rgba(16, 18, 40, 0.18), 0 2px 8px rgba(16, 18, 40, 0.08);
   --g-card-highlight: rgba(255, 255, 255, 1);
   --g-menu: #ffffff;
   --g-fg: #15151a;
@@ -166,7 +166,7 @@
   --g-card: rgba(28, 30, 44, 0.9);
   --g-card-line: rgba(255, 255, 255, 0.18);
   --g-card-blur: blur(34px) saturate(170%);
-  --g-card-shadow: 0 26px 64px rgba(0, 0, 0, 0.42), 0 2px 8px rgba(0, 0, 0, 0.2);
+  --g-card-shadow: 0 10px 26px rgba(0, 0, 0, 0.42), 0 2px 8px rgba(0, 0, 0, 0.2);
   --g-card-highlight: rgba(255, 255, 255, 0.16);
   --g-menu: rgba(34, 36, 52, 0.94);
   --g-fg: #ffffff;
@@ -220,7 +220,7 @@
   --g-card: rgba(246, 246, 250, 0.95);
   --g-card-line: rgba(255, 255, 255, 0.75);
   --g-card-blur: blur(36px) saturate(180%);
-  --g-card-shadow: 0 26px 64px rgba(10, 12, 30, 0.24), 0 2px 8px rgba(10, 12, 30, 0.08);
+  --g-card-shadow: 0 10px 26px rgba(10, 12, 30, 0.24), 0 2px 8px rgba(10, 12, 30, 0.08);
   --g-card-highlight: rgba(255, 255, 255, 0.95);
   --g-menu: rgba(250, 250, 252, 0.97);
   --g-fg: #101015;
@@ -260,7 +260,7 @@
   --g-card: rgba(22, 22, 30, 0.93);
   --g-card-line: rgba(255, 255, 255, 0.12);
   --g-card-blur: blur(28px) saturate(150%);
-  --g-card-shadow: 0 24px 60px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.25);
+  --g-card-shadow: 0 10px 26px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.25);
   --g-card-highlight: rgba(255, 255, 255, 0.07);
   --g-fg: #ffffff;
   --g-dim: rgba(255, 255, 255, 0.72);
@@ -299,6 +299,7 @@
   --g-tile-shadow: 0 6px 18px rgba(10, 12, 30, 0.18), 0 1px 3px rgba(10, 12, 30, 0.1);
   --g-card: rgba(255, 255, 255, 0.97);
   --g-card-line: rgba(0, 0, 0, 0.08);
+  --g-card-shadow: 0 10px 26px rgba(10, 12, 30, 0.22), 0 2px 8px rgba(10, 12, 30, 0.08);
   --g-card-highlight: rgba(255, 255, 255, 1);
   --g-fg: #121217;
   --g-dim: rgba(18, 18, 23, 0.62);

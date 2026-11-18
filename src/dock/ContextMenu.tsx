@@ -150,7 +150,7 @@ function PointMenu({ x, y, children }: { x: number; y: number; children: ReactNo
     // Room for the menu above the strip, measured from the screen edge.
     const far = edge === "bottom" ? vh - top : top + h;
     setOverlayHeight("point-menu", far - thickness + POPOVER_GAP);
-    const unhit = registerHit("point-menu", el, { pad: 24 });
+    const unhit = registerHit("point-menu", el, { pad: 36 });
     return () => {
       unhit();
       setOverlayHeight("point-menu", null);

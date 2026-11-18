@@ -60,6 +60,8 @@ export function useOverlaySize(id: string, ref: RefObject<HTMLElement | null>, o
     update();
     const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(update) : undefined;
     ro?.observe(el);
+    // 36 px: panel shadows (--g-card-shadow) reach at most 26 px sideways and 36 px below, so the
+    // window region never cuts one off (a cut shadow shows as a grey box over a bright window).
     const unhit = registerHit(`overlay:${id}`, el, { pad: 36 });
     return () => {
       ro?.disconnect();

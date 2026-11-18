@@ -50,6 +50,7 @@ export async function applyDevParams(): Promise<void> {
   if (align === "left" || align === "center" || align === "right" || align === "fill") updateDockPrefs({ fullWidthAlign: align });
   const magnify = Number(p.get("magnify"));
   if (magnify) updateDockPrefs({ magnification: true, magnifyScale: Math.max(1.2, Math.min(2, magnify)) });
+  if (p.get("highlight") === "1") updateDockPrefs({ highlightActive: true });
   if (p.get("keys") === "1") setTimeout(startKeyboardNav, 400);
   const menu = p.get("menu");
   if (menu) {

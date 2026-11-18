@@ -218,8 +218,13 @@ export function AppsTile({ instanceId, config: own, setConfig, size, openCard, i
     setMag(null);
   }, []);
   useEffect(() => () => cancelAnimationFrame(raf.current), []);
+  const lastPoint = useRef<{ x: number; y: number } | null>(null);
   const onRootMove = (e: RPointerEvent) => {
+    lastPoint.current = { x: e.clientX, y: e.clientY };
     if (!config.magnify || isSample || dragRef.current?.started) return;
+    // React sends moves inside a preview or menu here too (they are portals of this tile). Those
+    // are not moves along the dock: the magnified icons stay as they are.
+    if ((e.target as Element | null)?.closest?.("[data-glintbar-panel]")) return;
     pointerX.current = e.clientX;
     aim(1);
   };
@@ -230,15 +235,26 @@ export function AppsTile({ instanceId, config: own, setConfig, size, openCard, i
   const onRootLeave = () => {
     insideRef.current = false;
     setInside(false);
-    // Magnified apps stay put while one of their menus is open.
+    // Magnified apps stay put while one of their menus or previews is open (the pointer crosses a
+    // gap on its way up to it); they go back when it closes.
     const open = usePopup.getState().open;
-    if (open?.owner === instanceId && open.kind === "menu") return;
+    if (open?.owner === instanceId && (open.kind === "menu" || open.kind === "preview")) return;
     aim(0); // keeps the last pointer x while it fades
   };
   const magOn = !!mag;
   useEffect(() => {
-    if (!popup && magOn && !insideRef.current) aim(0);
-  }, [popup, magOn]);
+    if (popup || !magOn) return;
+    // A preview or menu that closes under the pointer (a click in it) sends no leave event, so
+    // look at what is under the pointer now.
+    const p = lastPoint.current;
+    const at = p && typeof document.elementFromPoint === "function" ? document.elementFromPoint(p.x, p.y) : null;
+    const over = !!at && (!!rootRef.current?.contains(at) || !!at.closest(`[data-glintbar-magnify="${CSS.escape(instanceId)}"]`));
+    if (insideRef.current && p && !over) {
+      insideRef.current = false;
+      setInside(false);
+    }
+    if (!insideRef.current) aim(0);
+  }, [popup, magOn, instanceId]);
   // The window or the bar changing size can move the tile: check the padding split and measure
   // the icons again.
   const [, setLayoutGen] = useState(0);

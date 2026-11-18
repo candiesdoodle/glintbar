@@ -81,15 +81,17 @@ export function AppVisual({
       className={cx(
         "relative grid shrink-0 place-items-center",
         style === "cards" && "rounded-tile border transition-colors duration-150",
-        style === "cards" && (lit ? "border-accent/60 bg-accent/25" : "border-line bg-tile hover:bg-tile-hover"),
+        style === "cards" && (lit ? "border-accent" : "border-line bg-tile hover:bg-tile-hover"),
         style === "icons" && "rounded-[10px] transition-colors duration-150",
-        style === "icons" && (lit ? "bg-accent/25" : "hover:bg-hover"),
+        style === "icons" && !lit && "hover:bg-hover",
         app?.flashing && "glintbar-apps-flash",
         highlight && "ring-2 ring-accent",
         app?.hung && "opacity-60 grayscale",
         className,
       )}
-      style={{ width: m.slot, height: m.height, ...css }}
+      // The active app keeps the tile's own colour (so it is as solid as the theme's tiles are) with
+      // some of the accent mixed in, instead of a see-through wash of accent.
+      style={{ width: m.slot, height: m.height, background: lit ? "color-mix(in srgb, var(--g-accent) 26%, var(--g-tile))" : undefined, ...css }}
     >
       <span className="grid place-items-center" style={{ transform: `translateY(${running ? -m.height * 0.035 : 0}px)` }}>
         {start ? (

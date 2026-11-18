@@ -6,8 +6,10 @@
   settings card.
 - Magnification eases in and out, and the app icons no longer jump sideways when it starts (most
   visible with Fill, left or right alignment).
+- Magnified icons no longer follow the pointer while it is inside a window preview or a
+  right-click menu, and they go back to normal after a click in one.
 - New option, Highlight the active app (Settings > Dock, or the Apps card): the app whose window is
-  in front gets a coloured background.
+  in front gets a tinted background that follows the theme and widget style.
 - Audio Output: click the tile's round icon to mute or unmute.
 - Tray: on Windows 11 22H2 and later, where tray icons can't be listed, a click on the tile opens
   Windows' own hidden-icons flyout directly.

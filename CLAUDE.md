@@ -22,6 +22,17 @@ Icons: `lucide-react`; brand glyphs: `simple-icons` (import single icons, e.g. `
 - Keep it light: no heavy UI libraries, no per-frame work when idle, nothing polls when no tile needs it.
 - Light TS checks only: `npx tsc --noEmit`, `npx vitest run <paths>`, `npx vite build`.
 
+## Branches and releases
+
+- All work goes on the `development` branch. Test builds are manual runs of `build.yml` on it
+  (`gh workflow run build.yml --ref development`); the installers are the run's
+  `glintbar-installers` artifact.
+- `main` only moves when a version is released: fast-forward it to the tested `development`
+  commit, then create the release from that commit with the installers of its green build. After
+  the release, update `bucket/glintbar.json` (version, URL, SHA-256 of the setup exe) on
+  `development` and fast-forward `main` again.
+- Nothing is released from any other branch, and no workflow publishes a release by itself.
+
 ## Layout and ownership (vertical slices)
 
 ```

@@ -1,13 +1,13 @@
 {
-    "version": "0.1.4",
+    "version": "0.1.5",
     "description": "A dock for Windows 10 and 11 that shows live widgets next to your apps.",
     "homepage": "https://github.com/candiesdoodle/glintbar",
     "license": "MIT",
     "notes": "GlintBar needs the Microsoft Edge WebView2 runtime, which Windows 11 includes. Settings are kept in %APPDATA%\\GlintBar.",
     "architecture": {
         "64bit": {
-            "url": "https://github.com/candiesdoodle/glintbar/releases/download/v0.1.4/GlintBar_0.1.4_x64-setup.exe#/dl.7z",
-            "hash": "54e3d2a10fc5163a9ca4692fc64996c220097efff4267edaf355b3dbe3ea2c1f"
+            "url": "https://github.com/candiesdoodle/glintbar/releases/download/v0.1.5/GlintBar_0.1.5_x64-setup.exe#/dl.7z",
+            "hash": "b90bbfd5a17113384d00910ce76bd9772ca202093e904b05ff5805e95a499239"
         }
     },
     "pre_install": "Remove-Item \"$dir\\`$PLUGINSDIR\", \"$dir\\uninstall.exe\" -Recurse -Force -ErrorAction SilentlyContinue",

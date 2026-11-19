@@ -395,6 +395,14 @@ fn check_dock(reason: &'static str, d: &window::GuardInfo, mons: &[MonitorInfo],
                 }
             }
         }
+        // The strip was sized for another DPI than its monitor has now (a remote session took over
+        // the screen, or the change came without a message): lay every dock out again.
+        if let Some(m) = mons.iter().find(|m| m.id == d.monitor_id) {
+            if d.dpi != 0 && m.dpi != d.dpi {
+                problems.push(format!("monitor DPI is now {} but the dock was sized for {}", m.dpi, d.dpi));
+                replan = true;
+            }
+        }
         if f.dpi != 0 && d.dpi != 0 && f.dpi != d.dpi {
             problems.push(format!("window DPI {} but monitor DPI {}", f.dpi, d.dpi));
         }

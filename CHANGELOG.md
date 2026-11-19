@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.1.6
 
 - The dock's height is now a share of the screen's height, shown as a percentage next to the
   Height slider in Settings > Dock. On a shorter or taller screen, such as a Remote Desktop session,

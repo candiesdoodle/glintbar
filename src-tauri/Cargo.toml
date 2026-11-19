@@ -1,6 +1,6 @@
 [package]
 name = "glintbar"
-version = "0.1.5"
+version = "0.1.6"
 description = "GlintBar - a widget dock for Windows"
 license = "MIT"
 edition = "2021"

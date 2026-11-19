@@ -9,7 +9,8 @@
  */
 import { useEffect, type RefObject } from "react";
 import { call } from "../core/backend";
-import { stripThickness, useDock } from "./layout";
+import { useDock } from "./layout";
+import { currentBarMetrics, useFit } from "./fit";
 import { WINDOW_LABEL } from "../core/windowLabel";
 
 export interface HitRect {
@@ -60,7 +61,8 @@ export function grownRect(r: { left: number; top: number; width: number; height:
 
 function compute(): HitRect[] {
   const d = useDock.getState();
-  const thickness = stripThickness(d);
+  // The strip as drawn at this window's screen fit.
+  const thickness = currentBarMetrics().thickness;
   const vh = window.innerHeight;
   const out: HitRect[] = [];
   for (const e of entries.values()) {
@@ -135,4 +137,5 @@ if (typeof window !== "undefined") {
     if ((e.target as HTMLElement | null)?.closest?.("[data-glintbar-panel], [data-glintbar-bar]")) refreshHits();
   }, true);
   useDock.subscribe(refreshHits);
+  useFit.subscribe(refreshHits);
 }

@@ -35,6 +35,18 @@ pub enum Displays {
     Follow,
 }
 
+/// How the dock's size follows the height of its screen (Settings > Dock > On smaller screens).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum ScreenFit {
+    /// The size as set, on every screen.
+    Off,
+    /// Smaller on screens less than `SHORT_SCREEN_HEIGHT` logical px tall (down to 60 %).
+    Short,
+    /// In proportion to the screen height, relative to `screen_fit_ref` (50 % to 150 %).
+    Proportional,
+}
+
 /// What the UI sends with `shell.set_dock`. Persisted under "shell.geometry" so the window is
 /// placed correctly before the UI loads. Every field has a default, so older saves still load.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -54,6 +66,12 @@ pub struct DockGeometry {
     pub displays: Displays,
     /// Device name of the chosen monitor ("" = the primary one).
     pub monitor: String,
+    /// How the dock follows its screen's height (see `fit_factor`).
+    pub screen_fit: ScreenFit,
+    /// Proportional: the screen height (logical px) the size was chosen on (0 = not known).
+    pub screen_fit_ref: f64,
+    /// The smallest factor that keeps the tiles at the size setting's minimum (0 = no limit).
+    pub fit_min: f64,
 }
 
 impl Default for DockGeometry {
@@ -68,6 +86,9 @@ impl Default for DockGeometry {
             show_on_desktop: false,
             displays: Displays::Main,
             monitor: String::new(),
+            screen_fit: ScreenFit::Short,
+            screen_fit_ref: 0.0,
+            fit_min: 0.0,
         }
     }
 }
@@ -94,7 +115,45 @@ impl DockGeometry {
         if self.monitor.len() > 64 {
             self.monitor.clear();
         }
+        if !self.screen_fit_ref.is_finite() {
+            self.screen_fit_ref = 0.0;
+        }
+        self.screen_fit_ref = self.screen_fit_ref.clamp(0.0, 20000.0);
+        if !self.fit_min.is_finite() {
+            self.fit_min = 0.0;
+        }
+        self.fit_min = self.fit_min.clamp(0.0, 1.0);
         self
+    }
+}
+
+/// ScreenFit::Short leaves the dock at its set size on screens at least this tall (logical px).
+pub const SHORT_SCREEN_HEIGHT: f64 = 1080.0;
+
+/// The factor the dock (tiles, padding, distance from the edge) is scaled by on a screen
+/// `screen_h` logical px tall. `reference_h`: the height the size was chosen on (Proportional).
+/// Never below `fit_min`, so the tiles stay at least the size setting's minimum.
+pub fn fit_factor(mode: ScreenFit, screen_h: f64, reference_h: f64, fit_min: f64) -> f64 {
+    if !screen_h.is_finite() || screen_h <= 0.0 {
+        return 1.0;
+    }
+    let raw = match mode {
+        ScreenFit::Off => return 1.0,
+        ScreenFit::Short => (screen_h / SHORT_SCREEN_HEIGHT).clamp(0.6, 1.0),
+        ScreenFit::Proportional if reference_h.is_finite() && reference_h > 0.0 => (screen_h / reference_h).clamp(0.5, 1.5),
+        ScreenFit::Proportional => 1.0,
+    };
+    let floor = if fit_min.is_finite() { fit_min.clamp(0.0, 1.0) } else { 0.0 };
+    raw.max(floor)
+}
+
+/// A monitor's height in logical px (physical px divided by its DPI scale).
+pub fn logical_height(monitor: Rect, scale: f64) -> f64 {
+    let h = monitor.height() as f64;
+    if scale > 0.0 {
+        h / scale
+    } else {
+        h
     }
 }
 
@@ -468,5 +527,29 @@ mod tests {
         let g: DockGeometry = serde_json::from_str(r#"{"edge":"top","hideTaskbar":false}"#).unwrap();
         assert_eq!(g.taskbar_mode(), TaskbarMode::Normal);
         assert_eq!(g.displays, Displays::Main);
+        assert_eq!(g.screen_fit, ScreenFit::Short);
+        assert_eq!(g.screen_fit_ref, 0.0);
+        assert_eq!(g.fit_min, 0.0);
+        let p: DockGeometry = serde_json::from_str(r#"{"screenFit":"proportional","screenFitRef":1440,"fitMin":0.6}"#).unwrap();
+        assert_eq!(p.screen_fit, ScreenFit::Proportional);
+        assert_eq!(p.screen_fit_ref, 1440.0);
+        assert_eq!(p.fit_min, 0.6);
+    }
+
+    #[test]
+    fn fit_follows_the_screen_height() {
+        assert_eq!(fit_factor(ScreenFit::Off, 600.0, 0.0, 0.0), 1.0);
+        assert_eq!(fit_factor(ScreenFit::Short, 1080.0, 0.0, 0.0), 1.0);
+        assert_eq!(fit_factor(ScreenFit::Short, 1440.0, 0.0, 0.0), 1.0);
+        assert!((fit_factor(ScreenFit::Short, 864.0, 0.0, 0.0) - 0.8).abs() < 1e-9);
+        assert_eq!(fit_factor(ScreenFit::Short, 400.0, 0.0, 0.0), 0.6);
+        assert_eq!(fit_factor(ScreenFit::Short, 400.0, 0.0, 0.7), 0.7);
+        assert_eq!(fit_factor(ScreenFit::Short, 0.0, 0.0, 0.0), 1.0);
+        assert_eq!(fit_factor(ScreenFit::Proportional, 1080.0, 1440.0, 0.0), 0.75);
+        assert_eq!(fit_factor(ScreenFit::Proportional, 600.0, 1440.0, 0.0), 0.5);
+        assert_eq!(fit_factor(ScreenFit::Proportional, 1440.0, 960.0, 0.0), 1.5);
+        assert_eq!(fit_factor(ScreenFit::Proportional, 1080.0, 0.0, 0.0), 1.0);
+        assert_eq!(logical_height(Rect::new(0, 0, 2560, 1440), 1.5), 960.0);
+        assert_eq!(logical_height(Rect::new(0, 0, 1480, 865), 1.0), 865.0);
     }
 }

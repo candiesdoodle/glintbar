@@ -4,6 +4,7 @@ import { setOverlayHeight } from "../../../dock/overlay";
 import { createPortal } from "react-dom";
 import { call } from "../../../core/backend";
 import type { TileProps } from "../../../core/widget";
+import { useBarMetrics } from "../../../dock/fit";
 import { useDock } from "../../../dock/layout";
 import { Popover } from "../../../dock/Popover";
 import type { Anchor } from "../../../dock/ui";
@@ -63,7 +64,8 @@ function HoverLabel({ anchor, text }: { anchor: Anchor; text: string }) {
 
 export function AppsTile({ instanceId, config: own, setConfig, size, openCard, isSample }: TileProps<AppsConfig>) {
   const config = useAppsView(own);
-  const spacing = useDock((s) => s.spacing);
+  // The bar's gap at this window's screen fit (`size` already is).
+  const spacing = useBarMetrics().spacing;
   const edge = useDock((s) => s.edge);
   const m = metrics(size, config, config.style === "cards" ? spacing : 0);
   const windows = useWindows(isSample);

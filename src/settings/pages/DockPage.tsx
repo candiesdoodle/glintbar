@@ -1,7 +1,17 @@
 import { dockActions, SIZE_PRESETS, SIZE_RANGE, useDock, type SizePreset } from "../../dock/layout";
 import { Segmented, Toggle } from "../../ui/controls";
-import { dockAlign, updateDockPrefs, useDockPrefs, type DockAlign, type TaskbarMode } from "../keys";
+import { useFit } from "../../dock/fit";
+import { dockAlign, screenFitMode, updateDockPrefs, useDockPrefs, type DockAlign, type ScreenFit, type TaskbarMode } from "../keys";
 import { Group, RangeRow, Row } from "../parts";
+
+const SCREEN_FIT_TEXT: Record<ScreenFit, { label: string; description: string }> = {
+  off: { label: "Keep the size", description: "The same size on every screen." },
+  short: { label: "Shrink on short screens", description: "Smaller on screens under 1080 pixels tall (after Windows scaling), down to 60 %." },
+  proportional: {
+    label: "Scale with the screen height",
+    description: "Keeps the share of the screen height it had where you last set its size (50 % to 150 %).",
+  },
+};
 
 /** px -> the preset it matches, or "custom". */
 function presetFor(px: number): SizePreset {
@@ -11,7 +21,16 @@ function presetFor(px: number): SizePreset {
 export function DockPage() {
   const d = useDock();
   const p = useDockPrefs();
-  const setSize = (px: number) => dockActions.update({ sizePx: px, sizePreset: presetFor(px) });
+  const fit = useFit();
+  const screenFit = screenFitMode(p.screenFit);
+  const setSize = (px: number) => {
+    dockActions.update({ sizePx: px, sizePreset: presetFor(px) });
+    // Proportional: the size you set is the size you get on this screen.
+    if (screenFit === "proportional" && fit.screenHeight > 0) updateDockPrefs({ screenFitRef: fit.screenHeight });
+  };
+  const setScreenFit = (mode: ScreenFit) =>
+    updateDockPrefs(mode === "proportional" ? { screenFit: mode, screenFitRef: fit.screenHeight > 0 ? fit.screenHeight : 0 } : { screenFit: mode });
+  const fitNote = Math.abs(fit.fit - 1) > 0.005 ? ` On this screen it is drawn at ${Math.round(fit.fit * 100)} %.` : "";
   // Older layouts only know hideTaskbar: show "Leave it alone" when it is off.
   const taskbar: TaskbarMode = !d.hideTaskbar && p.taskbarMode === "hidden" ? "leave" : p.taskbarMode;
   const setTaskbar = (mode: TaskbarMode) => {
@@ -35,6 +54,20 @@ export function DockPage() {
           />
         </Row>
         <RangeRow label="Height" info="Sets the widget height. The dock resizes live while you move the slider." value={d.sizePx} min={SIZE_RANGE.min} max={SIZE_RANGE.max} onChange={setSize} />
+        <Row label="On smaller screens" description={SCREEN_FIT_TEXT[screenFit].description + fitNote}>
+          <select
+            aria-label="On smaller screens"
+            value={screenFit}
+            onChange={(e) => setScreenFit(screenFitMode(e.target.value))}
+            className="h-7 rounded-[8px] border border-[var(--g-input-line)] bg-input px-2 text-[12.5px] text-fg outline-none"
+          >
+            {(Object.keys(SCREEN_FIT_TEXT) as ScreenFit[]).map((v) => (
+              <option key={v} value={v}>
+                {SCREEN_FIT_TEXT[v].label}
+              </option>
+            ))}
+          </select>
+        </Row>
       </Group>
 
       <Group title="Spacing">

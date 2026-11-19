@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- New option, On smaller screens (Settings > Dock): the dock gets smaller on short screens, such as
+  a Remote Desktop session, so it keeps a sensible share of the screen. Choose to keep the size,
+  shrink on screens under 1080 pixels tall (the default), or scale with the screen height. Cards,
+  menus and Settings keep their size.
+- The dock re-sizes itself if the screen's scale percentage changes without Windows announcing it.
+
 ## 0.1.5
 
 - Fixed: clicking a window preview, or an item in an app's right-click menu, also opened the Apps

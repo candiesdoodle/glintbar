@@ -5,7 +5,9 @@
 //!
 //! IPC (`shell.*`; per-window calls take `label`, the calling window's label, default "main"):
 //! - `set_dock {edge, thickness, reserveSpace, taskbar: "hidden"|"autohide"|"normal", autoHide,
-//!   showOnDesktop, displays: "main"|"all"|"follow", monitor}` - thickness in CSS px
+//!   showOnDesktop, displays: "main"|"all"|"follow", monitor, screenFit: "off"|"short"|"proportional",
+//!   screenFitRef, fitMin}` - thickness in CSS px at the set size; each dock's strip is that times
+//!   its screen fit factor (model::fit_factor, per monitor)
 //! - `set_overlay {label, height}` - room above the strip for cards/menus, CSS px (0 = none)
 //! - `set_hit_rects {label, rects: [{left, width, near, far}], full}` - the visible, clickable
 //!   parts in CSS px measured from the dock's screen edge; `full` = the whole window (drags)
@@ -13,7 +15,8 @@
 //! - `reveal {label}` - show the auto-hidden dock briefly
 //! - `begin_drag {label}` - the pointer is dragging the bar: follow it, snap on release
 //! - `set_focusable {label, focusable}` - allow keyboard focus (text inputs) or go back to no-activate
-//! - `window_info {label}` - this window's monitor and visibility (also shows a new dock window)
+//! - `window_info {label}` - this window's monitor, visibility and screen fit {fit, screenHeight,
+//!   fitSeq} (also shows a new dock window)
 //! - `close_ready {label}` - a closing window's page has unmounted
 //! - `hotkeys_set {hotkeys: [{id, keys: "Alt+T"}]}` -> [{id, keys, ok, error}]
 //! - `monitors`, `get_state`, `show`
@@ -22,6 +25,7 @@
 //! `svc://shell/placement {edge, monitor, at}`, `svc://shell/hotkey {id, label, at}`,
 //! `svc://shell/outside-click {label, at}`, `svc://shell/escape {label, at}`,
 //! `svc://shell/closing {label, at}`, `svc://shell/fullscreen {label, active}`,
+//! `svc://shell/fit {label, fit, screenHeight, seq}` (a dock's screen fit changed),
 //! `svc://shell/open-panel` ("widgets" | "settings"), `svc://shell/second-instance`.
 //! (`shell.open` / `shell.run` live in services/core/launch.rs.)
 

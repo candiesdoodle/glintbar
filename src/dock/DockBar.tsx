@@ -26,11 +26,11 @@ import {
   narrowedWidth,
   reorderFor,
   slotOffsets,
-  stripThickness,
   useDock,
   type SlotRect,
   type WidgetInstance,
 } from "./layout";
+import { currentBarMetrics, useBarMetrics } from "./fit";
 import { setOverlayHeight } from "./overlay";
 import { Popover } from "./Popover";
 import { removeWithAnimation, useRemoving } from "./removal";
@@ -46,16 +46,13 @@ const MOVE_THRESHOLD = 8;
 /** The strip at the screen edge: the bar, its tiles, scrolling, dragging, auto-hide. */
 export function DockStrip() {
   const edge = useDock((s) => s.edge);
-  const sizePx = useDock((s) => s.sizePx);
-  const padding = useDock((s) => s.padding);
-  const spacing = useDock((s) => s.spacing);
-  const distance = useDock((s) => s.distance);
+  // At this window's screen fit (fit.ts): smaller on a short screen; the settings keep the set size.
+  const { size: sizePx, padding, spacing, distance, thickness } = useBarMetrics();
   const fullWidth = useDock((s) => s.fullWidth);
   const barWidth = useDock((s) => s.barWidth);
   // Settings > Dock > Align widgets (full width only; a pill always fits its widgets).
   const align = useDockPrefs((p) => dockAlign(p.fullWidthAlign));
   const rowAlign: DockAlign = fullWidth ? align : "left";
-  const thickness = useDock(stripThickness);
   const visibility = useShell((s) => s.visibility);
   const canArrange = useCanArrange();
   const barRef = useRef<HTMLDivElement>(null);
@@ -154,11 +151,11 @@ function EndHandle({ side, barRef, scroller }: { side: "left" | "right"; barRef:
     const bar = barRef.current;
     const sc = scroller.current;
     if (!bar || !sc) return;
-    const d = useDock.getState();
+    const m = currentBarMetrics();
     const start = bar.getBoundingClientRect().width;
     // Natural width: everything visible, plus the bar's padding and border.
-    const natural = Math.min(window.innerWidth - 16, sc.scrollWidth + d.padding * 2 + 2);
-    const min = minBarWidth(d);
+    const natural = Math.min(window.innerWidth - 16, sc.scrollWidth + m.padding * 2 + 2);
+    const min = minBarWidth({ sizePx: m.size, padding: m.padding });
     const sx = e.clientX;
     setActive(true);
     const move = (ev: PointerEvent) => {

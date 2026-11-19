@@ -8,6 +8,7 @@ import { call } from "../core/backend";
 import { getWidget } from "../core/registry";
 import { useSettings } from "../core/store";
 import { WINDOW_LABEL } from "../core/windowLabel";
+import { useFit } from "../dock/fit";
 import { useDock } from "../dock/layout";
 import { useShell } from "../dock/shell";
 import { useDockUi } from "../dock/ui";
@@ -261,6 +262,8 @@ export async function computeLayout(reason: string) {
     spacing: dock.spacing,
     padding: dock.padding,
     distance: dock.distance,
+    /** Screen fit: the bar is drawn this many times the sizes above (1 on a 1080 px tall screen). */
+    fit: useFit.getState().fit,
     visibility: shell.visibility,
     bar: bar ? rect(bar.getBoundingClientRect()) : null,
     barFreePoint: barFree ? pt(barFree.x, barFree.y) : null,

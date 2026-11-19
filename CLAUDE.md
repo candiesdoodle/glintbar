@@ -136,7 +136,9 @@ pub fn register(reg: &mut Registrar) {
 ## Window model (services/shell, src/dock)
 
 One transparent, frameless, always-on-top, skip-taskbar, non-activating window on the primary
-monitor. Normally it is just the dock strip (`thickness` CSS px = size + 2×padding + distance + 2);
+monitor. Normally it is just the dock strip (`thickness` CSS px = size + 2×padding + distance + 2,
+times that dock's screen fit factor, which Rust works out per monitor and reports to the page, see
+`src/dock/fit.ts`);
 popovers register their height (`useOverlaySize`) and the window grows away from the edge via
 `shell.set_overlay`. The strip is reserved with SHAppBarMessage (maximised windows stop at it); the
 Windows taskbar is hidden while GlintBar runs and restored on exit, logoff, main-thread panic, and on

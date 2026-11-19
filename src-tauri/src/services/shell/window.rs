@@ -33,8 +33,9 @@ use windows::Win32::UI::WindowsAndMessaging::{
 };
 
 use super::model::{
-    desired_visibility, edge_for_point, edge_strip, grown_window, hit_to_window, plan, sliver, Displays,
-    DockGeometry, Edge, HitRect, PlanMonitor, Rect, TaskbarMode, Visibility, VisibilityInputs, MAIN_LABEL,
+    desired_visibility, edge_for_point, edge_strip, fit_factor, grown_window, hit_to_window, logical_height, plan,
+    sliver, Displays, DockGeometry, Edge, HitRect, PlanMonitor, Rect, TaskbarMode, Visibility, VisibilityInputs,
+    MAIN_LABEL,
 };
 use super::monitors::{self, MonitorInfo};
 use super::{appbar, hotkeys, multi, taskbar, watch};
@@ -58,7 +59,14 @@ struct Dock {
     hwnd: isize,
     monitor_id: String,
     monitor: Rect,
+    /// The monitor's DPI scale (CSS px -> physical px). Never includes `fit`.
     scale: f64,
+    /// Screen fit: what the page scales the bar by on this monitor (see model::fit_factor).
+    fit: f64,
+    /// Height of this dock's monitor in logical px (the page uses it for Proportional).
+    screen_height: f64,
+    /// Bumped whenever `fit` or `screen_height` changes, so the page can drop an older value.
+    fit_seq: u64,
     strip: Option<Rect>,
     reserved: Option<Rect>,
     appbar: bool,
@@ -97,6 +105,9 @@ impl Dock {
             monitor_id: String::new(),
             monitor: Rect::default(),
             scale: 1.0,
+            fit: 1.0,
+            screen_height: 0.0,
+            fit_seq: 0,
             strip: None,
             reserved: None,
             appbar: false,
@@ -158,6 +169,7 @@ pub struct DockSnapshot {
     window: Rect,
     app_bar: bool,
     scale: f64,
+    fit: f64,
     overlay: f64,
     sticky: f64,
     visibility: Visibility,
@@ -181,6 +193,21 @@ pub struct WindowInfo {
     primary: bool,
     visibility: Visibility,
     docks: usize,
+    /// Screen fit factor for this dock's bar (1 = the size as set).
+    fit: f64,
+    /// Height of this dock's monitor in logical px (0 = not known yet).
+    screen_height: f64,
+    fit_seq: u64,
+}
+
+/// `svc://shell/fit`: a dock's screen fit changed (its monitor, the display or the settings did).
+#[derive(Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+struct FitEvent {
+    label: String,
+    fit: f64,
+    screen_height: f64,
+    seq: u64,
 }
 
 #[derive(Serialize, Clone)]
@@ -433,6 +460,7 @@ pub(super) fn log_diagnostics(reason: &'static str) {
             monitor = %d.monitor_id,
             monitor_rect = %fmt_rect(d.monitor),
             scale = d.scale,
+            fit = d.fit,
             on_monitor,
             visibility = ?d.visibility,
             app_bar = d.appbar,
@@ -663,12 +691,24 @@ pub fn window_info(label: &str) -> WindowInfo {
                         primary,
                         visibility: d.visibility,
                         docks: count,
+                        fit: d.fit,
+                        screen_height: d.screen_height,
+                        fit_seq: d.fit_seq,
                     },
                     show,
                 )
             }
             None => (
-                WindowInfo { label: label.to_string(), monitor: String::new(), primary: true, visibility: Visibility::Shown, docks: count },
+                WindowInfo {
+                    label: label.to_string(),
+                    monitor: String::new(),
+                    primary: true,
+                    visibility: Visibility::Shown,
+                    docks: count,
+                    fit: 1.0,
+                    screen_height: 0.0,
+                    fit_seq: 0,
+                },
                 false,
             ),
         }
@@ -701,6 +741,7 @@ pub fn snapshot() -> Snapshot {
                 window: d.window,
                 app_bar: d.appbar,
                 scale: d.scale,
+                fit: d.fit,
                 overlay: d.overlay,
                 sticky: d.sticky,
                 visibility: d.visibility,
@@ -832,7 +873,11 @@ fn relayout(label: &str) {
         },
     };
     let scale = mon.scale();
-    let thickness = ((geo.thickness * scale).round() as i32).clamp(8, mon.monitor.height().max(8));
+    // Screen fit: the page draws the bar `fit` times its set size, so the strip is too. `scale`
+    // stays the pure DPI scale (hit rects and overlay heights are CSS px).
+    let screen_height = logical_height(mon.monitor, scale);
+    let fit = fit_factor(geo.screen_fit, screen_height, geo.screen_fit_ref, geo.fit_min);
+    let thickness = ((geo.thickness * fit * scale).round() as i32).clamp(8, mon.monitor.height().max(8));
     let want = geo.wants_app_bar();
     let mut appbar_now = appbar_on;
     if want && !appbar_on {
@@ -854,7 +899,7 @@ fn relayout(label: &str) {
     } else {
         edge_strip(base, geo.edge, thickness)
     };
-    let previous = {
+    let (previous, fit_event) = {
         let mut s = state();
         match s.docks.iter_mut().find(|d| d.label == label) {
             Some(d) => {
@@ -863,11 +908,24 @@ fn relayout(label: &str) {
                 d.set_monitor(&mon);
                 d.strip = Some(strip);
                 d.reserved = if appbar_now { Some(strip) } else { None };
-                previous
+                let fit_changed = (d.fit - fit).abs() > 1e-6 || (d.screen_height - screen_height).abs() > 0.5;
+                d.fit = fit;
+                d.screen_height = screen_height;
+                let event = if fit_changed {
+                    d.fit_seq += 1;
+                    Some(FitEvent { label: d.label.clone(), fit, screen_height, seq: d.fit_seq })
+                } else {
+                    None
+                };
+                (previous, event)
             }
-            None => None,
+            None => (None, None),
         }
     };
+    if let Some(event) = fit_event {
+        tracing::info!(%label, fit, screen_height, "dock screen fit");
+        emit("fit", event);
+    }
     if previous != Some(strip) {
         tracing::info!(
             %label,
@@ -875,6 +933,7 @@ fn relayout(label: &str) {
             monitor_rect = %fmt_rect(mon.monitor),
             work = %fmt_rect(mon.work),
             dpi = mon.dpi,
+            fit,
             thickness,
             strip = %fmt_rect(strip),
             app_bar = appbar_now,
@@ -1472,14 +1531,14 @@ fn drag_step() {
         drag_finish(pt);
         return;
     }
-    let (label, raw, thickness_css) = {
+    let (label, raw, thickness_css, screen_fit, fit_ref, fit_min) = {
         let s = state();
         let label = match &s.drag {
             Some(l) => l.clone(),
             None => return,
         };
         match s.docks.iter().find(|d| d.label == label) {
-            Some(d) => (label, d.hwnd, s.geo.thickness),
+            Some(d) => (label, d.hwnd, s.geo.thickness, s.geo.screen_fit, s.geo.screen_fit_ref, s.geo.fit_min),
             None => return,
         }
     };
@@ -1487,7 +1546,8 @@ fn drag_step() {
         Some(m) => m,
         None => return,
     };
-    let t = ((thickness_css * mon.scale()).round() as i32).clamp(8, mon.monitor.height().max(8));
+    let fit = fit_factor(screen_fit, logical_height(mon.monitor, mon.scale()), fit_ref, fit_min);
+    let t = ((thickness_css * fit * mon.scale()).round() as i32).clamp(8, mon.monitor.height().max(8));
     let top = (pt.y - t / 2).clamp(mon.monitor.top, mon.monitor.bottom - t);
     let rect = Rect::new(mon.monitor.left, top, mon.monitor.right, top + t);
     let ok = unsafe {

@@ -5,6 +5,7 @@
  */
 import { call } from "../core/backend";
 import { updateSettings, useSettings, type ThemeId } from "../core/store";
+import { currentBarMetrics } from "../dock/fit";
 import { dockActions, useDock } from "../dock/layout";
 import { useShell } from "../dock/shell";
 import { useDockUi } from "../dock/ui";
@@ -135,11 +136,14 @@ export async function magnifyState() {
     : [];
   const p = useDockPrefs.getState();
   const d = useDock.getState();
+  // As drawn: at this window's screen fit (1 on a 1080 px tall screen).
+  const bm = currentBarMetrics();
   return {
     magnification: p.magnification,
     magnifyScale: p.magnifyScale,
-    sizePx: d.sizePx,
-    padding: d.padding,
+    sizePx: bm.size,
+    padding: bm.padding,
+    fit: bm.fit,
     edge: d.edge,
     scale: m.scale,
     bar: bar ? m.rect(bar.getBoundingClientRect()) : null,

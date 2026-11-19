@@ -7,6 +7,7 @@
  *   ?align=center|right|fill (full-width alignment)  ?magnify=1.8 (magnification on at that size)
  *   ?dock=system.cpu,clocks.clock (exactly these widgets)  ?card= also adds the widget if missing
  *   ?welcome=1 / ?welcome=0 (show / skip the first-run hint)  ?keys=1 (keyboard navigation, as Win+Alt+T)
+ *   ?fit=0.8 (draw the bar at this screen fit factor, as Rust would on a short screen)
  */
 import { setStored, updateSettings, type ThemeId } from "../core/store";
 import { isKnownWidget, loadAllWidgets } from "../core/registry";
@@ -15,6 +16,7 @@ import { ui, type PanelId } from "./ui";
 import { WELCOME_KEY } from "./WelcomeHint";
 import { startKeyboardNav } from "./keyNav";
 import { updateDockPrefs } from "../settings/keys";
+import { forceFit } from "./fit";
 
 export async function applyDevParams(): Promise<void> {
   const p = new URLSearchParams(location.search);
@@ -51,6 +53,8 @@ export async function applyDevParams(): Promise<void> {
   const magnify = Number(p.get("magnify"));
   if (magnify) updateDockPrefs({ magnification: true, magnifyScale: Math.max(1.2, Math.min(2, magnify)) });
   if (p.get("highlight") === "1") updateDockPrefs({ highlightActive: true });
+  const fit = Number(p.get("fit"));
+  if (fit) forceFit(fit);
   if (p.get("keys") === "1") setTimeout(startKeyboardNav, 400);
   const menu = p.get("menu");
   if (menu) {

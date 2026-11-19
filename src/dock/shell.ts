@@ -9,11 +9,12 @@
 import { useEffect } from "react";
 import { create } from "zustand";
 import { call, on } from "../core/backend";
-import { useDockPrefs, type DockPrefs } from "../settings/keys";
+import { screenFitMode, useDockPrefs, type DockPrefs } from "../settings/keys";
 import { dockActions, stripThickness, useDock, type DockState, type Edge } from "./layout";
 import { ui, useDockUi } from "./ui";
 import { WINDOW_LABEL, isMainWindow } from "../core/windowLabel";
 import { KEYNAV_FALLBACKS, KEYNAV_HOTKEY } from "./keyNav";
+import { applyFit, fitMinFor } from "./fit";
 
 export type Visibility = "shown" | "autohidden" | "suppressed";
 
@@ -49,7 +50,10 @@ export function taskbarChoice(hideTaskbar: boolean, mode: DockPrefs["taskbarMode
   return mode;
 }
 
-/** What `shell.set_dock` gets. Pure, exported for tests. */
+/**
+ * What `shell.set_dock` gets. Pure, exported for tests. The thickness is at the set size: Rust
+ * scales each dock's strip by that dock's screen fit (never below `fitMin`) and tells the page.
+ */
 export function geometryFor(d: DockState, p: DockPrefs) {
   return {
     edge: d.edge,
@@ -61,6 +65,9 @@ export function geometryFor(d: DockState, p: DockPrefs) {
     showOnDesktop: p.showOnDesktop,
     displays: p.displays,
     monitor: d.monitor,
+    screenFit: screenFitMode(p.screenFit),
+    screenFitRef: Number.isFinite(p.screenFitRef) && p.screenFitRef > 0 ? p.screenFitRef : 0,
+    fitMin: fitMinFor(d),
   };
 }
 
@@ -121,16 +128,22 @@ function applyVisibility(v: Visibility) {
 export function useShellBridge(): void {
   useEffect(() => {
     let alive = true;
-    call<{ monitor: string; visibility: Visibility }>("shell", "window_info", { label: WINDOW_LABEL })
+    call<{ monitor: string; visibility: Visibility; fit?: number; screenHeight?: number; fitSeq?: number }>("shell", "window_info", { label: WINDOW_LABEL })
       .then((info) => {
         if (!alive || !info) return;
         useShell.setState({ monitor: info.monitor ?? "" });
         if (info.visibility) applyVisibility(info.visibility);
+        applyFit({ fit: info.fit, screenHeight: info.screenHeight, seq: info.fitSeq });
       })
       .catch(() => {});
     const offs = [
       on<{ label: string; state: Visibility }>("shell", "visibility", (p) => {
         if (p && p.label === WINDOW_LABEL) applyVisibility(p.state);
+      }),
+      // This dock's screen fit changed (its monitor, the display or the setting). Only the drawing
+      // follows it: the geometry sent to Rust does not depend on it, so nothing is sent back.
+      on<{ label: string; fit: number; screenHeight: number; seq: number }>("shell", "fit", (p) => {
+        if (p && p.label === WINDOW_LABEL) applyFit(p);
       }),
       on<{ edge: Edge; monitor: string; at: number }>("shell", "placement", (p) => {
         if (!isMainWindow || !p || Date.now() - p.at > STALE_MS) return;

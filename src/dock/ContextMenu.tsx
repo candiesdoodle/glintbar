@@ -8,7 +8,8 @@ import type { WidgetDef } from "../core/widget";
 import { useDockPrefs } from "../settings/keys";
 import { clamp, cx } from "../ui/cx";
 import { registerHit } from "./hitRegion";
-import { stripThickness, useDock } from "./layout";
+import { useStripThickness } from "./fit";
+import { useDock } from "./layout";
 import { POPOVER_GAP, setOverlayHeight } from "./overlay";
 import { Popover } from "./Popover";
 import { removeWithAnimation } from "./removal";
@@ -135,7 +136,7 @@ function accountItem(def: WidgetDef<any>, instanceId: string, connected: boolean
 function PointMenu({ x, y, children }: { x: number; y: number; children: ReactNode }) {
   const ref = useRef<HTMLDivElement>(null);
   const edge = useDock((s) => s.edge);
-  const thickness = useDock(stripThickness);
+  const thickness = useStripThickness();
   const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
 
   useLayoutEffect(() => {

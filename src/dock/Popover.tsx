@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { clamp, cx } from "../ui/cx";
-import { stripThickness, useDock } from "./layout";
+import { useStripThickness } from "./fit";
+import { useDock } from "./layout";
 import { maxPopoverHeight, POPOVER_GAP, useOverlaySize } from "./overlay";
 import type { Anchor } from "./ui";
 
@@ -46,7 +47,8 @@ export function Popover({
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const edge = useDock((s) => s.edge);
-  const thickness = useDock(stripThickness);
+  // The strip as drawn (smaller on a short screen); the popover itself keeps its size.
+  const thickness = useStripThickness();
   const vw = useViewportWidth();
   // Grows the window and makes the popover clickable (see overlay.ts / hitRegion.ts).
   useOverlaySize(id, ref, offset);

@@ -10,7 +10,8 @@
  *                           Apps tile)
  *   - "settings.appearance" src/appearance (theme, glass) and the Apps tile (appIconSize, appCards)
  *   - "settings.dock"       src/dock/shell.ts -> shell.set_dock (displays, taskbar mode, show on
- *                           desktop), lockDock (dock + menu), fullWidthAlign (src/dock/DockBar.tsx,
+ *                           desktop, screenFit + screenFitRef: Rust works out each dock's factor
+ *                           and reports it back, see src/dock/fit.ts), lockDock (dock + menu), fullWidthAlign (src/dock/DockBar.tsx,
  *                           every dock window), and the Apps tile (magnification, magnifyScale,
  *                           windowPreviews). Settings > Dock writes "dock" and these.
  * Rust never reads these keys: it gets what it needs through shell.set_dock ("shell.geometry").
@@ -29,6 +30,17 @@ export const DOCK_ALIGNS: readonly DockAlign[] = ["left", "center", "right", "fi
 /** A saved or imported value we don't know (an older or newer version wrote it): left. */
 export function dockAlign(v: unknown): DockAlign {
   return DOCK_ALIGNS.includes(v as DockAlign) ? (v as DockAlign) : "left";
+}
+/**
+ * How the dock follows its screen's height (factor worked out in Rust, per dock):
+ * "off" = the size as set; "short" = smaller on screens under 1080 logical px tall (down to 60 %);
+ * "proportional" = in step with the screen height, relative to screenFitRef (50 % to 150 %).
+ */
+export type ScreenFit = "off" | "short" | "proportional";
+export const SCREEN_FITS: readonly ScreenFit[] = ["off", "short", "proportional"];
+/** A saved or imported value we don't know: the default. */
+export function screenFitMode(v: unknown): ScreenFit {
+  return SCREEN_FITS.includes(v as ScreenFit) ? (v as ScreenFit) : "short";
 }
 /** "hidden" = hide while GlintBar runs, "autohide" = switch Windows' own auto-hide on, "leave" = don't touch it. */
 export type TaskbarMode = "hidden" | "autohide" | "leave";
@@ -81,6 +93,13 @@ export interface DockPrefs {
   highlightActive: boolean;
   /** Full width only: widgets at the left, centre or right, or stretched to fill the bar (left when they overflow). */
   fullWidthAlign: DockAlign;
+  /** On smaller screens: keep the size, shrink on short screens, or scale with the screen height. */
+  screenFit: ScreenFit;
+  /**
+   * "proportional": the screen height (logical px) the size was set on; written when that choice
+   * is picked and whenever the size changes while it is on (0 = not known: factor 1).
+   */
+  screenFitRef: number;
 }
 
 export const DEFAULT_GENERAL: GeneralPrefs = {
@@ -113,6 +132,8 @@ export const DEFAULT_DOCK_PREFS: DockPrefs = {
   windowPreviews: true,
   highlightActive: false,
   fullWidthAlign: "left",
+  screenFit: "short",
+  screenFitRef: 0,
 };
 
 export const KEYS = {

@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { Bell, X } from "lucide-react";
-import { stripThickness, useDock } from "../dock/layout";
+import { useStripThickness } from "../dock/fit";
+import { useDock } from "../dock/layout";
 import { POPOVER_GAP, useOverlaySize } from "../dock/overlay";
 import { cx } from "../ui/cx";
 import { dismissAlert, useAlerts, type Alert } from "./alerts";
@@ -30,7 +31,7 @@ export function AlertHost() {
 function Stack({ alerts }: { alerts: Alert[] }) {
   const ref = useRef<HTMLDivElement>(null);
   const edge = useDock((s) => s.edge);
-  const thickness = useDock(stripThickness);
+  const thickness = useStripThickness();
   useOverlaySize("alerts", ref);
   return (
     <div

@@ -2,10 +2,10 @@
 
 ## Unreleased
 
-- New option, On smaller screens (Settings > Dock): the dock gets smaller on short screens, such as
-  a Remote Desktop session, so it keeps a sensible share of the screen. Choose to keep the size,
-  shrink on screens under 1080 pixels tall (the default), or scale with the screen height. Cards,
-  menus and Settings keep their size.
+- The dock's height is now a share of the screen's height, shown as a percentage next to the
+  Height slider in Settings > Dock. On a shorter or taller screen, such as a Remote Desktop session,
+  the bar keeps its proportions instead of its pixel size; cards, menus and Settings keep their size.
+  The widgets never get smaller or larger than the Height slider allows (26 to 120 px).
 - The dock re-sizes itself if the screen's scale percentage changes without Windows announcing it.
 
 ## 0.1.5

@@ -89,7 +89,7 @@ mockService("shell", {
     docks: 1,
     // Screen fit: Rust works it out per monitor; the preview draws at the set size (?fit= forces one).
     fit: 1,
-    screenHeight: window.screen?.height || 1080,
+    screenHeight: Math.max(window.screen?.height || 0, window.innerHeight) || 1080,
     fitSeq: 0,
   }),
   close_ready: () => undefined,

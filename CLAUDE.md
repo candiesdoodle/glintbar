@@ -137,7 +137,8 @@ pub fn register(reg: &mut Registrar) {
 
 One transparent, frameless, always-on-top, skip-taskbar, non-activating window on the primary
 monitor. Normally it is just the dock strip (`thickness` CSS px = size + 2×padding + distance + 2,
-times that dock's screen fit factor, which Rust works out per monitor and reports to the page, see
+times that dock's screen fit factor: its monitor's height over the height the sizes were set on,
+within the Height slider's limits; Rust works it out per monitor and reports it to the page, see
 `src/dock/fit.ts`);
 popovers register their height (`useOverlaySize`) and the window grows away from the edge via
 `shell.set_overlay`. The strip is reserved with SHAppBarMessage (maximised windows stop at it); the

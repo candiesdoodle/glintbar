@@ -40,6 +40,14 @@ export interface DockState {
 
 export const SIZE_PRESETS: Record<Exclude<SizePreset, "custom">, number> = { s: 34, m: 44, l: 58 };
 export const SIZE_RANGE = { min: 26, max: 120 };
+export const SPACING_RANGE = { min: 0, max: 24 };
+export const PADDING_RANGE = { min: 0, max: 16 };
+export const DISTANCE_RANGE = { min: 0, max: 40 };
+
+/** px -> the preset it matches, or "custom". */
+export function presetFor(px: number): SizePreset {
+  return (Object.entries(SIZE_PRESETS).find(([, v]) => v === px)?.[0] ?? "custom") as SizePreset;
+}
 
 let counter = 0;
 export function newInstanceId(widgetId: string): string {

@@ -5,9 +5,9 @@
 //!
 //! IPC (`shell.*`; per-window calls take `label`, the calling window's label, default "main"):
 //! - `set_dock {edge, thickness, reserveSpace, taskbar: "hidden"|"autohide"|"normal", autoHide,
-//!   showOnDesktop, displays: "main"|"all"|"follow", monitor, screenFit: "off"|"short"|"proportional",
-//!   screenFitRef, fitMin}` - thickness in CSS px at the set size; each dock's strip is that times
-//!   its screen fit factor (model::fit_factor, per monitor)
+//!   showOnDesktop, displays: "main"|"all"|"follow", monitor, screenFit: "proportional" (older saves
+//!   may hold "off"/"short"), screenFitRef, fitMin, fitMax}` - thickness in CSS px at the set size;
+//!   each dock's strip is that times its screen fit factor (model::fit_factor, per monitor)
 //! - `set_overlay {label, height}` - room above the strip for cards/menus, CSS px (0 = none)
 //! - `set_hit_rects {label, rects: [{left, width, near, far}], full}` - the visible, clickable
 //!   parts in CSS px measured from the dock's screen edge; `full` = the whole window (drags)

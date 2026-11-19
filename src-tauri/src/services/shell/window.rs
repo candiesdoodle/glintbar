@@ -876,7 +876,7 @@ fn relayout(label: &str) {
     // Screen fit: the page draws the bar `fit` times its set size, so the strip is too. `scale`
     // stays the pure DPI scale (hit rects and overlay heights are CSS px).
     let screen_height = logical_height(mon.monitor, scale);
-    let fit = fit_factor(geo.screen_fit, screen_height, geo.screen_fit_ref, geo.fit_min);
+    let fit = fit_factor(geo.screen_fit, screen_height, geo.screen_fit_ref, geo.fit_min, geo.fit_max);
     let thickness = ((geo.thickness * fit * scale).round() as i32).clamp(8, mon.monitor.height().max(8));
     let want = geo.wants_app_bar();
     let mut appbar_now = appbar_on;
@@ -1531,14 +1531,14 @@ fn drag_step() {
         drag_finish(pt);
         return;
     }
-    let (label, raw, thickness_css, screen_fit, fit_ref, fit_min) = {
+    let (label, raw, thickness_css, screen_fit, fit_ref, fit_min, fit_max) = {
         let s = state();
         let label = match &s.drag {
             Some(l) => l.clone(),
             None => return,
         };
         match s.docks.iter().find(|d| d.label == label) {
-            Some(d) => (label, d.hwnd, s.geo.thickness, s.geo.screen_fit, s.geo.screen_fit_ref, s.geo.fit_min),
+            Some(d) => (label, d.hwnd, s.geo.thickness, s.geo.screen_fit, s.geo.screen_fit_ref, s.geo.fit_min, s.geo.fit_max),
             None => return,
         }
     };
@@ -1546,7 +1546,7 @@ fn drag_step() {
         Some(m) => m,
         None => return,
     };
-    let fit = fit_factor(screen_fit, logical_height(mon.monitor, mon.scale()), fit_ref, fit_min);
+    let fit = fit_factor(screen_fit, logical_height(mon.monitor, mon.scale()), fit_ref, fit_min, fit_max);
     let t = ((thickness_css * fit * mon.scale()).round() as i32).clamp(8, mon.monitor.height().max(8));
     let top = (pt.y - t / 2).clamp(mon.monitor.top, mon.monitor.bottom - t);
     let rect = Rect::new(mon.monitor.left, top, mon.monitor.right, top + t);

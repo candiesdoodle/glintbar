@@ -86,7 +86,7 @@ export function RangeRow({
         {info && <InfoTip>{info}</InfoTip>}
       </div>
       <Slider value={value} min={min} max={max} step={step} onChange={onChange} label={typeof label === "string" ? label : undefined} />
-      <div className="w-12 shrink-0 text-right text-[12px] text-dim tabular-nums">{format ? format(value) : `${value}${unit}`}</div>
+      <div className="min-w-12 shrink-0 text-right text-[12px] whitespace-nowrap text-dim tabular-nums">{format ? format(value) : `${value}${unit}`}</div>
     </div>
   );
 }

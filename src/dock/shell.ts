@@ -9,12 +9,12 @@
 import { useEffect } from "react";
 import { create } from "zustand";
 import { call, on } from "../core/backend";
-import { screenFitMode, useDockPrefs, type DockPrefs } from "../settings/keys";
+import { useDockPrefs, type DockPrefs } from "../settings/keys";
 import { dockActions, stripThickness, useDock, type DockState, type Edge } from "./layout";
 import { ui, useDockUi } from "./ui";
 import { WINDOW_LABEL, isMainWindow } from "../core/windowLabel";
 import { KEYNAV_FALLBACKS, KEYNAV_HOTKEY } from "./keyNav";
-import { applyFit, fitMinFor } from "./fit";
+import { applyFit, fitMaxFor, fitMinFor, initFitReference } from "./fit";
 
 export type Visibility = "shown" | "autohidden" | "suppressed";
 
@@ -52,7 +52,8 @@ export function taskbarChoice(hideTaskbar: boolean, mode: DockPrefs["taskbarMode
 
 /**
  * What `shell.set_dock` gets. Pure, exported for tests. The thickness is at the set size: Rust
- * scales each dock's strip by that dock's screen fit (never below `fitMin`) and tells the page.
+ * scales each dock's strip by its screen height / `screenFitRef` (kept within `fitMin` and
+ * `fitMax`, the Height slider's limits) and tells the page.
  */
 export function geometryFor(d: DockState, p: DockPrefs) {
   return {
@@ -65,9 +66,10 @@ export function geometryFor(d: DockState, p: DockPrefs) {
     showOnDesktop: p.showOnDesktop,
     displays: p.displays,
     monitor: d.monitor,
-    screenFit: screenFitMode(p.screenFit),
+    screenFit: "proportional",
     screenFitRef: Number.isFinite(p.screenFitRef) && p.screenFitRef > 0 ? p.screenFitRef : 0,
     fitMin: fitMinFor(d),
+    fitMax: fitMaxFor(d),
   };
 }
 
@@ -165,6 +167,8 @@ export function useShellBridge(): void {
         setTimeout(() => call("shell", "close_ready", { label: WINDOW_LABEL }).catch(() => {}), 120);
       }),
     ];
+    // No reference screen height yet: the main window's screen becomes it (only main writes it).
+    if (isMainWindow) offs.push(initFitReference());
     return () => {
       alive = false;
       offs.forEach((off) => off());

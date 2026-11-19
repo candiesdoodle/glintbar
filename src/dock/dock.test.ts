@@ -71,14 +71,16 @@ describe("geometry sent to Rust", () => {
     expect(taskbarChoice(true, "autohide")).toBe("autohide");
   });
   it("includes displays and show-on-desktop from Settings > Dock", () => {
-    const g = geometryFor(DEFAULT_DOCK, { showOnDesktop: true, displays: "all", lockDock: false, taskbarMode: "hidden", magnification: false, magnifyScale: 1.5, fullWidthAlign: "left", windowPreviews: true, highlightActive: false, screenFit: "short", screenFitRef: 0 });
-    expect(g).toMatchObject({ edge: "bottom", thickness: 64, displays: "all", showOnDesktop: true, taskbar: "hidden", hideTaskbar: true, screenFit: "short", screenFitRef: 0 });
-    // Default dock: 44 px tiles in a 64 px strip; 28 / 46 keeps the tile at the 26 px minimum.
+    const g = geometryFor(DEFAULT_DOCK, { showOnDesktop: true, displays: "all", lockDock: false, taskbarMode: "hidden", magnification: false, magnifyScale: 1.5, fullWidthAlign: "left", windowPreviews: true, highlightActive: false, screenFitRef: 0 });
+    expect(g).toMatchObject({ edge: "bottom", thickness: 64, displays: "all", showOnDesktop: true, taskbar: "hidden", hideTaskbar: true, screenFit: "proportional", screenFitRef: 0 });
+    // Default dock: 44 px tiles in a 64 px strip; 28 / 46 keeps the tile at the 26 px minimum,
+    // 122 / 46 at the 120 px maximum.
     expect(g.fitMin).toBeCloseTo(0.6087, 4);
+    expect(g.fitMax).toBeCloseTo(2.6521, 4);
   });
-  it("sends a known screen fit choice", () => {
-    const p = { showOnDesktop: false, displays: "main" as const, lockDock: false, taskbarMode: "hidden" as const, magnification: false, magnifyScale: 1.5, fullWidthAlign: "left" as const, windowPreviews: true, highlightActive: false, screenFitRef: 900 };
-    expect(geometryFor(DEFAULT_DOCK, { ...p, screenFit: "proportional" })).toMatchObject({ screenFit: "proportional", screenFitRef: 900 });
-    expect(geometryFor(DEFAULT_DOCK, { ...p, screenFit: "bogus" as never }).screenFit).toBe("short");
+  it("always sends proportional screen fit with the reference height", () => {
+    const p = { showOnDesktop: false, displays: "main" as const, lockDock: false, taskbarMode: "hidden" as const, magnification: false, magnifyScale: 1.5, fullWidthAlign: "left" as const, windowPreviews: true, highlightActive: false };
+    expect(geometryFor(DEFAULT_DOCK, { ...p, screenFitRef: 900 })).toMatchObject({ screenFit: "proportional", screenFitRef: 900 });
+    expect(geometryFor(DEFAULT_DOCK, { ...p, screenFitRef: Number.NaN }).screenFitRef).toBe(0);
   });
 });

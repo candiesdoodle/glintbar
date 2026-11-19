@@ -1,36 +1,17 @@
-import { dockActions, SIZE_PRESETS, SIZE_RANGE, useDock, type SizePreset } from "../../dock/layout";
+import { DISTANCE_RANGE, dockActions, PADDING_RANGE, presetFor, SIZE_PRESETS, SIZE_RANGE, SPACING_RANGE, useDock, type SizePreset } from "../../dock/layout";
 import { Segmented, Toggle } from "../../ui/controls";
-import { useFit } from "../../dock/fit";
-import { dockAlign, screenFitMode, updateDockPrefs, useDockPrefs, type DockAlign, type ScreenFit, type TaskbarMode } from "../keys";
+import { editDockMeasures, heightLabel, rebaseToScreen, useFit } from "../../dock/fit";
+import { dockAlign, updateDockPrefs, useDockPrefs, type DockAlign, type TaskbarMode } from "../keys";
 import { Group, RangeRow, Row } from "../parts";
-
-const SCREEN_FIT_TEXT: Record<ScreenFit, { label: string; description: string }> = {
-  off: { label: "Keep the size", description: "The same size on every screen." },
-  short: { label: "Shrink on short screens", description: "Smaller on screens under 1080 pixels tall (after Windows scaling), down to 60 %." },
-  proportional: {
-    label: "Scale with the screen height",
-    description: "Keeps the share of the screen height it had where you last set its size (50 % to 150 %).",
-  },
-};
-
-/** px -> the preset it matches, or "custom". */
-function presetFor(px: number): SizePreset {
-  return (Object.entries(SIZE_PRESETS).find(([, v]) => v === px)?.[0] ?? "custom") as SizePreset;
-}
 
 export function DockPage() {
   const d = useDock();
   const p = useDockPrefs();
-  const fit = useFit();
-  const screenFit = screenFitMode(p.screenFit);
-  const setSize = (px: number) => {
-    dockActions.update({ sizePx: px, sizePreset: presetFor(px) });
-    // Proportional: the size you set is the size you get on this screen.
-    if (screenFit === "proportional" && fit.screenHeight > 0) updateDockPrefs({ screenFitRef: fit.screenHeight });
-  };
-  const setScreenFit = (mode: ScreenFit) =>
-    updateDockPrefs(mode === "proportional" ? { screenFit: mode, screenFitRef: fit.screenHeight > 0 ? fit.screenHeight : 0 } : { screenFit: mode });
-  const fitNote = Math.abs(fit.fit - 1) > 0.005 ? ` On this screen it is drawn at ${Math.round(fit.fit * 100)} %.` : "";
+  const { fit, screenHeight } = useFit();
+  // Every size as drawn on the screen Settings is open on (the dock's own values at factor 1).
+  const shown = rebaseToScreen(d, fit) ?? d;
+  const preset = presetFor(shown.sizePx);
+  const setSize = (px: number) => editDockMeasures({ sizePx: px });
   // Older layouts only know hideTaskbar: show "Leave it alone" when it is off.
   const taskbar: TaskbarMode = !d.hideTaskbar && p.taskbarMode === "hidden" ? "leave" : p.taskbarMode;
   const setTaskbar = (mode: TaskbarMode) => {
@@ -41,45 +22,53 @@ export function DockPage() {
   return (
     <>
       <Group title="Size">
-        <Row label="Size" info="S matches the height of the Windows taskbar and L is meant for large or high-DPI screens. For any other height, use the Height slider below.">
+        <Row label="Size" info="S matches the height of the Windows taskbar and L is meant for large or high-DPI screens. For any other height, use the Height slider below. Sizes are for the screen this window is on.">
           <Segmented
-            value={d.sizePreset}
+            value={preset}
             options={[
               { value: "s" as SizePreset, label: "S" },
               { value: "m" as SizePreset, label: "M" },
               { value: "l" as SizePreset, label: "L" },
-              ...(d.sizePreset === "custom" ? [{ value: "custom" as SizePreset, label: `${d.sizePx}px` }] : []),
+              ...(preset === "custom" ? [{ value: "custom" as SizePreset, label: `${shown.sizePx}px` }] : []),
             ]}
             onChange={(v) => v !== "custom" && setSize(SIZE_PRESETS[v])}
           />
         </Row>
-        <RangeRow label="Height" info="Sets the widget height. The dock resizes live while you move the slider." value={d.sizePx} min={SIZE_RANGE.min} max={SIZE_RANGE.max} onChange={setSize} />
-        <Row label="On smaller screens" description={SCREEN_FIT_TEXT[screenFit].description + fitNote}>
-          <select
-            aria-label="On smaller screens"
-            value={screenFit}
-            onChange={(e) => setScreenFit(screenFitMode(e.target.value))}
-            className="h-7 rounded-[8px] border border-[var(--g-input-line)] bg-input px-2 text-[12.5px] text-fg outline-none"
-          >
-            {(Object.keys(SCREEN_FIT_TEXT) as ScreenFit[]).map((v) => (
-              <option key={v} value={v}>
-                {SCREEN_FIT_TEXT[v].label}
-              </option>
-            ))}
-          </select>
-        </Row>
+        <RangeRow
+          label="Height"
+          info={`Height is a share of the screen's height, so the dock keeps its proportions on smaller and larger screens. It stays between ${SIZE_RANGE.min} and ${SIZE_RANGE.max} px.`}
+          value={shown.sizePx}
+          min={SIZE_RANGE.min}
+          max={SIZE_RANGE.max}
+          format={(v) => heightLabel(v, screenHeight)}
+          onChange={setSize}
+        />
       </Group>
 
       <Group title="Spacing">
-        <RangeRow label="Spacing" info="Space left between neighbouring widgets." value={d.spacing} min={0} max={24} onChange={(v) => dockActions.update({ spacing: v })} />
-        <RangeRow label="Padding" info="Room inside the dock around its widgets." value={d.padding} min={0} max={16} onChange={(v) => dockActions.update({ padding: v })} />
+        <RangeRow
+          label="Spacing"
+          info="Space left between neighbouring widgets."
+          value={shown.spacing}
+          min={SPACING_RANGE.min}
+          max={SPACING_RANGE.max}
+          onChange={(v) => editDockMeasures({ spacing: v })}
+        />
+        <RangeRow
+          label="Padding"
+          info="Room inside the dock around its widgets."
+          value={shown.padding}
+          min={PADDING_RANGE.min}
+          max={PADDING_RANGE.max}
+          onChange={(v) => editDockMeasures({ padding: v })}
+        />
         <RangeRow
           label="Distance from edge"
           info="Leaves a gap between the dock and the screen edge. At 0 the dock touches the edge."
-          value={d.distance}
-          min={0}
-          max={40}
-          onChange={(v) => dockActions.update({ distance: v })}
+          value={shown.distance}
+          min={DISTANCE_RANGE.min}
+          max={DISTANCE_RANGE.max}
+          onChange={(v) => editDockMeasures({ distance: v })}
         />
       </Group>
 

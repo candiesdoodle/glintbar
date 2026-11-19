@@ -6,6 +6,7 @@ import { call } from "../core/backend";
 import { isKnownWidget, loadAllWidgets, loadWidget, loadWidgets, widgetIds, getWidget } from "../core/registry";
 import { updateSettings, type ThemeId } from "../core/store";
 import { needsConnection } from "../core/connections";
+import { editDockMeasures } from "../dock/fit";
 import { dockActions, SIZE_PRESETS, useDock, type Edge, type WidgetInstance } from "../dock/layout";
 import { ui, useDockUi, type PanelId } from "../dock/ui";
 import { formatValue } from "./console";
@@ -77,7 +78,8 @@ export async function runCommand(cmd: Command): Promise<unknown> {
       const size = (arg<string>(a, "size") ?? a) as keyof typeof SIZE_PRESETS;
       const px = SIZE_PRESETS[size];
       if (!px) throw new Error("size must be s, m or l");
-      dockActions.update({ sizePreset: size, sizePx: px });
+      // As in Settings > Dock: the size as drawn on this screen.
+      editDockMeasures({ sizePreset: size, sizePx: px });
       return { size, px };
     }
     case "setFullWidth": {
